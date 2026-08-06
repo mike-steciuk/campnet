@@ -16,3 +16,4 @@ captures/
 raw-responses/
 tests/fixtures/private/
 *.private.json
+devices.toml

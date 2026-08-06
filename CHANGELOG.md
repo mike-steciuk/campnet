@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Added an authoritative AT command registry, typed validation and error
+  records, safety guards, generated reference documentation, and registry
+  integrity tests.
+
 ### Added
 
 - Provider-oriented collection architecture.
@@ -24,3 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Reversible GNSS collection that restores the modem's prior GNSS state.
 - Extended carrier report grouped by operator and strongest observed LTE cell.
 - Read-only RAT and LTE/5G band-preference snapshots for future safe restoration.
+- Stable UUID identity for every survey with backward-compatible legacy loading.
+- Auto-detected Ookla and speedtest-cli performance provider with raw JSON retention.
+- Validated per-device TOML profiles and router-executed speed tests with route checks.

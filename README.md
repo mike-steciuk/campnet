@@ -29,10 +29,16 @@ python -m campnet collect `
 Collect live read-only modem observations through a configured router:
 
 ```powershell
-python -m campnet collect --ssh-host 192.168.8.1
+Copy-Item devices.example.toml devices.toml
+python -m campnet collect --device gl-x3000
 ```
 
 The live transport uses OpenSSH batch mode and GL.iNet's `gl_modem` helper.
+
+AT commands are defined once in `campnet.at_registry`. The generated
+[command reference](docs/at-command-reference.md) documents their purpose,
+safety, timeouts, parsers, and expected response families. Regenerate it with
+`python -m campnet.at_docs` after reviewing a registry change.
 It does not accept or persist passwords, passphrases, or private keys.
 Collection prints a human-readable report and saves the complete versioned
 survey, including raw responses, beneath the ignored `surveys/` directory.
@@ -40,7 +46,14 @@ The default `one-off` profile includes slow `COPS` and `QSCAN` discovery plus
 temporary GNSS enablement. CampNet restores GNSS to its previous disabled
 state afterward. Use `--profile continuous` for fast radio sampling; that
 profile omits slow discovery and never enables GNSS. Use `--no-gps` to omit
-GNSS from an individual one-off survey.
+GNSS from an individual one-off survey. One-off surveys also auto-detect an
+Ookla or `speedtest-cli` executable and record normalized performance plus its
+raw JSON output. Use `--no-speed-test` on metered connections.
+
+`devices.toml` is local and Git-ignored. Device profiles select a known
+transport and speed-test adapter; they cannot inject arbitrary remote command
+arguments. For router-side tests, CampNet verifies the configured default-route
+interface before starting and can fall back to the collector client.
 
 Use `--output` to choose a specific JSON path. No provider currently changes
 modem state; GNSS enablement will remain opt-in when its provider is added.

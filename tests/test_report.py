@@ -67,6 +67,36 @@ def test_report_includes_restorable_modem_preferences() -> None:
     assert "lte_band: 2:5:12:14:66" in report
 
 
+def test_report_includes_speedtest_result() -> None:
+    survey = Survey(
+        timestamp=utc_now(),
+        metadata=SurveyMetadata(),
+        provider_results=(
+            ProviderResult(
+                provider="speedtest",
+                collected_at=utc_now(),
+                data={
+                    "download_mbps": 47.25,
+                    "upload_mbps": 8.5,
+                    "latency_ms": 31.2,
+                    "jitter_ms": 2.1,
+                    "packet_loss_percent": 0.0,
+                    "isp": "Example ISP",
+                    "execution_scope": "collector_host",
+                },
+            ),
+        ),
+    )
+
+    report = format_survey(survey)
+
+    assert f"Survey ID:   {survey.survey_id}" in report
+    assert "Download:   47.250 Mbps" in report
+    assert "Upload:     8.500 Mbps" in report
+    assert "ISP:         Example ISP" in report
+    assert "Measured on: Collector computer" in report
+
+
 def test_rsrp_quality_boundaries() -> None:
     assert rsrp_quality(-80) == "Excellent"
     assert rsrp_quality(-90) == "Good"

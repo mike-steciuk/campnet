@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TypeAlias, cast
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 APP_VERSION = "0.1.0"
 SCHEMA_VERSION = 1
@@ -32,6 +33,7 @@ def datetime_from_text(value: str) -> datetime:
 
 @dataclass(frozen=True, slots=True)
 class SurveyMetadata:
+    device_id: str | None = None
     campground: str | None = None
     site: str | None = None
     notes: str | None = None
@@ -40,6 +42,7 @@ class SurveyMetadata:
 
     def to_dict(self) -> dict[str, JsonValue]:
         return {
+            "device_id": self.device_id,
             "campground": self.campground,
             "site": self.site,
             "notes": self.notes,
@@ -50,6 +53,7 @@ class SurveyMetadata:
     @classmethod
     def from_dict(cls, value: dict[str, JsonValue]) -> SurveyMetadata:
         return cls(
+            device_id=_optional_string(value.get("device_id")),
             campground=_optional_string(value.get("campground")),
             site=_optional_string(value.get("site")),
             notes=_optional_string(value.get("notes")),
@@ -112,11 +116,13 @@ class Survey:
     metadata: SurveyMetadata
     provider_results: tuple[ProviderResult, ...] = ()
     recommendations: tuple[str, ...] = ()
+    survey_id: str = field(default_factory=lambda: str(uuid4()))
     schema_version: int = SCHEMA_VERSION
     app_version: str = APP_VERSION
 
     def to_dict(self) -> dict[str, JsonValue]:
         return {
+            "survey_id": self.survey_id,
             "schema_version": self.schema_version,
             "app_version": self.app_version,
             "timestamp": datetime_to_text(self.timestamp),
@@ -128,6 +134,7 @@ class Survey:
     @classmethod
     def from_dict(cls, value: dict[str, JsonValue]) -> Survey:
         schema_version = value.get("schema_version")
+        survey_id = value.get("survey_id")
         app_version = value.get("app_version")
         timestamp = value.get("timestamp")
         metadata = value.get("metadata")
@@ -143,13 +150,23 @@ class Survey:
             isinstance(item, str) for item in recommendations
         ):
             raise ValueError("recommendations must be strings")
+        parsed_timestamp = datetime_from_text(timestamp)
+        if survey_id is None:
+            survey_id = str(uuid5(NAMESPACE_URL, f"campnet:{app_version}:{timestamp}"))
+        if not isinstance(survey_id, str):
+            raise ValueError("survey_id must be a UUID string")
+        try:
+            survey_id = str(UUID(survey_id))
+        except ValueError as error:
+            raise ValueError("survey_id must be a valid UUID") from error
         return cls(
-            timestamp=datetime_from_text(timestamp),
+            timestamp=parsed_timestamp,
             metadata=SurveyMetadata.from_dict(metadata),
             provider_results=tuple(
                 ProviderResult.from_dict(item) for item in results if isinstance(item, dict)
             ),
             recommendations=tuple(cast(list[str], recommendations)),
+            survey_id=survey_id,
             schema_version=SCHEMA_VERSION,
             app_version=app_version,
         )

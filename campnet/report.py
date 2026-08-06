@@ -17,18 +17,28 @@ _CARRIERS = {
 
 
 def format_survey(survey: Survey) -> str:
-    lines = ["CampNet Cellular Survey", "=" * 23]
+    lines = ["CampNet Cellular Survey", "=" * 23, f"Survey ID:   {survey.survey_id}"]
     lines.extend(_metadata_lines(survey))
+    speedtest_result = next(
+        (result for result in survey.provider_results if result.provider == "speedtest"), None
+    )
     at_result = next(
         (result for result in survey.provider_results if result.provider == "at"), None
     )
     if at_result is not None:
-        lines.extend(_radio_lines(parse_quectel_snapshot(at_result.raw_responses)))
+        lines.extend(
+            _radio_lines(
+                parse_quectel_snapshot(at_result.raw_responses),
+                has_speedtest=speedtest_result is not None and speedtest_result.succeeded,
+            )
+        )
     gnss_result = next(
         (result for result in survey.provider_results if result.provider == "gnss"), None
     )
     if gnss_result is not None:
         lines.extend(_gnss_lines(gnss_result))
+    if speedtest_result is not None:
+        lines.extend(_speedtest_lines(speedtest_result))
     lines.extend(_provider_lines(survey.provider_results))
     return "\n".join(lines)
 
@@ -39,6 +49,8 @@ def _metadata_lines(survey: Survey) -> list[str]:
     if metadata.site:
         location += f", site {metadata.site}"
     lines = ["", f"Survey time: {survey.timestamp.isoformat()}", f"Location:    {location}"]
+    if metadata.device_id:
+        lines.append(f"Device:      {metadata.device_id}")
     if metadata.router_placement:
         lines.append(f"Placement:   {metadata.router_placement}")
     if metadata.antenna_configuration:
@@ -48,7 +60,7 @@ def _metadata_lines(survey: Survey) -> list[str]:
     return lines
 
 
-def _radio_lines(snapshot: RadioSnapshot) -> list[str]:
+def _radio_lines(snapshot: RadioSnapshot, *, has_speedtest: bool) -> list[str]:
     lines: list[str] = []
     if snapshot.modem:
         modem = snapshot.modem
@@ -103,7 +115,7 @@ def _radio_lines(snapshot: RadioSnapshot) -> list[str]:
         lines.append(f"{cell.technology} channel {cell.channel}, PCI {cell.pci}: {signal}")
 
     lines.extend(["", "Interpretation", "--------------"])
-    lines.extend(_interpretation(snapshot))
+    lines.extend(_interpretation(snapshot, has_speedtest=has_speedtest))
     return lines
 
 
@@ -149,7 +161,7 @@ def _cell_lines(cell: RadioCell) -> list[str]:
     ]
 
 
-def _interpretation(snapshot: RadioSnapshot) -> list[str]:
+def _interpretation(snapshot: RadioSnapshot, *, has_speedtest: bool) -> list[str]:
     observations: list[str] = []
     for cell in snapshot.serving_cells:
         label = cell.band or cell.technology
@@ -161,7 +173,8 @@ def _interpretation(snapshot: RadioSnapshot) -> list[str]:
             observations.append(f"- {label} has good signal-to-interference quality.")
     if any(cell.technology == "NR5G-NSA" for cell in snapshot.serving_cells):
         observations.append("- The modem has an active non-standalone 5G secondary connection.")
-    observations.append("- Throughput and congestion cannot be inferred without a speed test.")
+    if not has_speedtest:
+        observations.append("- Throughput and congestion cannot be inferred without a speed test.")
     return observations
 
 
@@ -193,6 +206,39 @@ def _gnss_lines(result: ProviderResult) -> list[str]:
     if satellites is not None:
         lines.append(f"Satellites:  {satellites}")
     return lines
+
+
+def _speedtest_lines(result: ProviderResult) -> list[str]:
+    lines = ["", "Performance", "-----------"]
+    if not result.succeeded:
+        lines.append("Speed test unavailable or failed.")
+        return lines
+    _append_measurement(lines, "Download", result.data.get("download_mbps"), "Mbps")
+    _append_measurement(lines, "Upload", result.data.get("upload_mbps"), "Mbps")
+    _append_measurement(lines, "Latency", result.data.get("latency_ms"), "ms")
+    _append_measurement(lines, "Jitter", result.data.get("jitter_ms"), "ms")
+    _append_measurement(lines, "Packet loss", result.data.get("packet_loss_percent"), "%")
+    isp = result.data.get("isp")
+    server = result.data.get("server_name")
+    if isinstance(isp, str):
+        lines.append(f"ISP:         {isp}")
+    if isinstance(server, str):
+        lines.append(f"Server:      {server}")
+    if result.data.get("execution_scope") == "collector_host":
+        lines.append("Measured on: Collector computer")
+    elif result.data.get("execution_scope") == "router":
+        lines.append("Measured on: Router")
+    if result.data.get("fallback_used") is True:
+        lines.append("Fallback:    Yes")
+        reason = result.data.get("fallback_reason")
+        if isinstance(reason, str):
+            lines.append(f"Reason:      {reason}")
+    return lines
+
+
+def _append_measurement(lines: list[str], label: str, value: object, unit: str) -> None:
+    if isinstance(value, int | float):
+        lines.append(f"{label + ':':<12}{value:.3f} {unit}")
 
 
 def _metric(
