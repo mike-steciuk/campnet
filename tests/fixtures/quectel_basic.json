@@ -1,0 +1,7 @@
+{
+  "AT+QCAINFO": "+QCAINFO: \"PCC\",1125,75,\"LTE BAND 2\",1,250,-108,-14,-75,11\r\n+QCAINFO: \"SCC\",174770,1,\"NR5G BAND 5\",685\r\nOK\r\n",
+  "AT+QENG=\"neighbourcell\"": "+QENG: \"neighbourcell intra\",\"LTE\",1125,250,-14,-108,-75,-,-,-,-,-,-\r\n+QENG: \"neighbourcell intra\",\"LTE\",1125,333,-15,-114,-85,-,-,-,-,-,-\r\nOK\r\n",
+  "AT+QENG=\"servingcell\"": "+QENG: \"servingcell\",\"NOCONN\"\r\n+QENG: \"LTE\",\"FDD\",310,410,ABCDE,250,1125,2,4,4,500E,-108,-13,-76,13,8,230,-\r\n+QENG: \"NR5G-NSA\",310,410,685,-97,3,-14,174770,5,1,0\r\nOK\r\n",
+  "AT+QNWINFO": "+QNWINFO: \"FDD LTE\",\"310410\",\"LTE BAND 2\",1125\r\n+QNWINFO: \"FDD NR5G\",\"310410\",\"NR5G BAND 5\",174770\r\nOK\r\n",
+  "ATI": "Quectel\r\nRM520N-GL\r\nRevision: RM520NGLAAR03A03M4G\r\nOK\r\n"
+}

@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+build/
+dist/
+
+# Private field data. These may contain modem/SIM identifiers, cell IDs,
+# precise coordinates, public IP addresses, and user notes. Only deliberately
+# redacted fixtures belong under tests/fixtures/.
+surveys/
+captures/
+raw-responses/
+tests/fixtures/private/
+*.private.json

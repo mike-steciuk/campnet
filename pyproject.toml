@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "campnet"
+version = "0.1.0"
+description = "Reproducible cellular connectivity field surveys"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["mypy>=1.10", "pytest>=8.0", "ruff>=0.5"]
+
+[project.scripts]
+campnet = "campnet.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["campnet"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["campnet", "tests"]
