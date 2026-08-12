@@ -6,21 +6,24 @@ RVers, and remote workers.
 > CampNet measures what the modem observes—not just what the carrier
 > advertises.
 
-The project is in its bootstrap phase. The current executable establishes the
-provider architecture, canonical Survey model, and JSON persistence layer.
-Hardware collection providers will be added against captured modem fixtures.
+The project is an early working prototype. It can collect live Quectel modem
+data through a GL.iNet router, preserve raw responses, parse radio data,
+temporarily enable GNSS for one-off surveys, and run configurable router- or
+collector-side speed tests.
 
 ## Quick start
 
 ```powershell
-python -m campnet collect --campground "Petoskey State Park" --site "212"
-python -m campnet show surveys\<survey-file>.json
+.\.venv\Scripts\python.exe -m campnet collect `
+  --campground "Petoskey State Park" `
+  --site "30"
+.\.venv\Scripts\python.exe -m campnet show surveys\<survey-file>.json
 ```
 
 Replay the checked-in modem fixture through the AT provider:
 
 ```powershell
-python -m campnet collect `
+.\.venv\Scripts\python.exe -m campnet collect `
   --at-fixture tests\fixtures\quectel_basic.json `
   --profile continuous `
   --output surveys\fixture-survey.json
@@ -30,7 +33,7 @@ Collect live read-only modem observations through a configured router:
 
 ```powershell
 Copy-Item devices.example.toml devices.toml
-python -m campnet collect --device gl-x3000
+.\.venv\Scripts\python.exe -m campnet collect --device gl-x3000
 ```
 
 The live transport uses OpenSSH batch mode and GL.iNet's `gl_modem` helper.
@@ -55,11 +58,16 @@ transport and speed-test adapter; they cannot inject arbitrary remote command
 arguments. For router-side tests, CampNet verifies the configured default-route
 interface before starting and can fall back to the collector client.
 
-Use `--output` to choose a specific JSON path. No provider currently changes
-modem state; GNSS enablement will remain opt-in when its provider is added.
+Use `--output` to choose a specific JSON path. A comprehensive one-off survey
+may temporarily enable GNSS and restores it afterward; continuous collection
+does not change GNSS state.
 
 See [CampNet_Development_Spec.md](CampNet_Development_Spec.md) for the living
 product and engineering specification.
+
+See [docs/project-handoff.md](docs/project-handoff.md) when moving development
+to another computer. It records current status, known hardware behavior,
+private local files, setup steps, and immediate next work.
 
 Router authentication is intentionally handled outside CampNet. See
 [docs/development.md](docs/development.md) for the key-based OpenWrt SSH setup.

@@ -442,3 +442,8 @@ CHANGELOG should follow Keep a Changelog.
 
 This document should be treated as the living product specification and
 updated as requirements evolve through field testing.
+
+For the tested hardware baseline, observed firmware behavior, machine-local
+files, migration procedure, and prioritized continuation work, see
+`docs/project-handoff.md`. Those observations are evidence for a specific
+environment; they do not become universal modem assumptions.

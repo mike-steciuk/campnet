@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Updated roadmap, setup guidance, and durable handoff context for moving
+  development to another computer.
 - Added an authoritative AT command registry, typed validation and error
   records, safety guards, generated reference documentation, and registry
   integrity tests.
