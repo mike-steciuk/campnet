@@ -46,6 +46,56 @@ def test_report_summarizes_visible_carriers() -> None:
 
     assert "Operators: Verizon (available)" in report
     assert "Verizon: 1 cells; best LTE BAND 13, RSRP: -94 dBm (Fair)" in report
+    assert "Signal by carrier" in report
+    assert (
+        "1. Verizon: LTE BAND 13, RSRP: -94 dBm (Fair), "
+        "RSRQ: -13 dB (Good); 1 cell detected"
+    ) in report
+    assert "Coverage comparison only" in report
+
+
+def test_carrier_signal_comparison_is_ranked_and_shows_gap() -> None:
+    raw = {
+        "AT+COPS=?#1": (
+            '+COPS: (1,"AT&T","AT&T","310410",7),'
+            '(1,"Verizon","Verizon","311480",7)\nOK\n'
+        ),
+        "AT+QSCAN=1#1": (
+            '+QSCAN: "LTE",310,410,1125,250,-108,-16,18,111\n'
+            '+QSCAN: "LTE",310,410,1175,251,-105,-15,18,111\n'
+            '+QSCAN: "LTE",311,480,5230,207,-94,-13,34,113\nOK\n'
+        ),
+    }
+    survey = Survey(
+        timestamp=utc_now(),
+        metadata=SurveyMetadata(),
+        provider_results=(
+            ProviderResult(provider="at", collected_at=utc_now(), raw_responses=raw),
+        ),
+    )
+
+    report = format_survey(survey)
+
+    verizon = report.index("1. Verizon:")
+    att = report.index("2. AT&T:")
+    assert verizon < att
+    assert "2. AT&T: LTE BAND 2, RSRP: -105 dBm (Weak)" in report
+    assert "2 cells detected, 11 dB below strongest" in report
+
+
+def test_carrier_signal_comparison_preserves_unknown_plmn() -> None:
+    raw = {
+        "AT+QSCAN=1#1": '+QSCAN: "LTE",999,99,5230,207,-90,-10,34,113\nOK\n'
+    }
+    survey = Survey(
+        timestamp=utc_now(),
+        metadata=SurveyMetadata(),
+        provider_results=(
+            ProviderResult(provider="at", collected_at=utc_now(), raw_responses=raw),
+        ),
+    )
+
+    assert "1. PLMN 99999:" in format_survey(survey)
 
 
 def test_report_includes_restorable_modem_preferences() -> None:

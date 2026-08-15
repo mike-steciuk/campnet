@@ -22,6 +22,7 @@ from campnet.providers import (
 )
 from campnet.providers.speedtest import discover_speedtest_adapter
 from campnet.report import format_survey
+from campnet.review import review_surveys
 from campnet.storage import load_survey, save_survey
 from campnet.transports import ReplayTransport, SSHATTransport
 
@@ -66,6 +67,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     show = commands.add_parser("show", help="display a saved survey")
     show.add_argument("path", type=Path)
+    review = commands.add_parser("review", help="interactively browse saved surveys")
+    review.add_argument(
+        "--surveys-dir",
+        type=Path,
+        default=Path("surveys"),
+        help="directory containing saved survey JSON files",
+    )
     return parser
 
 
@@ -115,6 +123,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "show":
         print(format_survey(load_survey(args.path)))
         return 0
+    if args.command == "review":
+        return review_surveys(args.surveys_dir)
     raise AssertionError(f"unhandled command: {args.command}")
 
 

@@ -84,6 +84,7 @@ def _radio_lines(snapshot: RadioSnapshot, *, has_speedtest: bool) -> list[str]:
         lines.append(f"{carrier}: {network.technology}, {network.band}{channel}")
 
     lines.extend(_visible_network_lines(snapshot))
+    lines.extend(_carrier_signal_lines(snapshot))
 
     lines.extend(["", "Serving radio", "-------------"])
     if not snapshot.serving_cells:
@@ -146,6 +147,50 @@ def _visible_network_lines(snapshot: RadioSnapshot) -> list[str]:
         lines.append(
             f"{carrier}: {len(cells)} cells; best {best.band or best.technology}, {signal}"
         )
+    return lines
+
+
+def _carrier_signal_lines(snapshot: RadioSnapshot) -> list[str]:
+    lines = ["", "Signal by carrier", "-----------------"]
+    measured = [cell for cell in snapshot.visible_cells if cell.rsrp_dbm is not None]
+    if not measured:
+        lines.append("No carrier-attributed signal measurements reported.")
+        return lines
+
+    operator_names = {
+        operator.plmn: operator.name or operator.short_name
+        for operator in snapshot.operators
+        if operator.name or operator.short_name
+    }
+    grouped: dict[str, list[VisibleCell]] = {}
+    for cell in measured:
+        grouped.setdefault(cell.plmn, []).append(cell)
+
+    ranked: list[tuple[str, list[VisibleCell], VisibleCell]] = []
+    for plmn, cells in grouped.items():
+        cells.sort(key=lambda cell: cell.rsrp_dbm or -999, reverse=True)
+        ranked.append((plmn, cells, cells[0]))
+    ranked.sort(key=lambda item: item[2].rsrp_dbm or -999, reverse=True)
+    strongest_rsrp = ranked[0][2].rsrp_dbm
+
+    lines.append("Ranked by each carrier's strongest passively detected cell:")
+    for rank, (plmn, cells, best) in enumerate(ranked, start=1):
+        carrier = operator_names.get(plmn) or _CARRIERS.get(plmn, f"PLMN {plmn}")
+        rsrp = _metric("RSRP", best.rsrp_dbm, "dBm", rsrp_quality)
+        rsrq = _metric("RSRQ", best.rsrq_db, "dB", rsrq_quality)
+        radio = best.band or best.technology
+        gap = ""
+        if strongest_rsrp is not None and best.rsrp_dbm is not None and rank > 1:
+            gap = f", {strongest_rsrp - best.rsrp_dbm} dB below strongest"
+        cell_word = "cell" if len(cells) == 1 else "cells"
+        lines.append(
+            f"{rank}. {carrier}: {radio}, {rsrp}, {rsrq}; "
+            f"{len(cells)} {cell_word} detected{gap}"
+        )
+    lines.append(
+        "Coverage comparison only: a stronger detected signal may improve reception, "
+        "but does not prove registration, capacity, latency, or speed."
+    )
     return lines
 
 

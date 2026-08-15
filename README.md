@@ -20,6 +20,18 @@ collector-side speed tests.
 .\.venv\Scripts\python.exe -m campnet show surveys\<survey-file>.json
 ```
 
+Browse saved surveys interactively by location, site, and scan date:
+
+```powershell
+# Open the numbered console survey browser without remembering file names.
+.\review-surveys.ps1
+```
+
+The equivalent direct command is `.\.venv\Scripts\python.exe -m campnet review`.
+Historical JSON is not rewritten: it is reparsed using the latest reporting
+logic. Carrier comparisons appear only when the stored scan contains usable
+`+QSCAN:` cell rows with PLMN and RSRP measurements.
+
 Replay the checked-in modem fixture through the AT provider:
 
 ```powershell

@@ -324,6 +324,25 @@ visible-cell scans (`AT+COPS=?` and `AT+QSCAN=1`) by default. Continuous or
 movement-oriented surveys prioritize sampling cadence and omit those slow
 scans. Both profiles preserve every response and record partial failures.
 
+One-off reports rank carriers by the strongest carrier-attributed RSRP found
+in the visible-cell scan and include RSRQ, band/technology, detected-cell
+count, and the difference from the strongest result. This is a comparative
+downlink-coverage observation only. It must not be presented as proof that a
+SIM can register or as a prediction of capacity, latency, upload performance,
+or throughput. Unknown PLMNs remain labeled by numeric identity rather than
+being assigned a guessed carrier.
+
+Historical reports apply current parsing and reporting logic to preserved raw
+responses without mutating the stored survey. A successful command status alone
+is not measurement data: for example, `AT+QSCAN=1` followed only by `OK` yields
+no carrier-attributed cells and must be reported as unavailable rather than as
+a successful zero-signal comparison.
+
+The local console browser discovers survey JSON recursively and presents
+location, site, and reverse-chronological scan menus before rendering the
+selected survey. It must handle missing location/site metadata and malformed
+files without preventing access to valid surveys.
+
 One-off surveys also capture the current RAT acquisition order and LTE, NSA
 5G, and SA 5G band preferences. These values form an immutable pre-test
 configuration snapshot. Future band-lock experiments must construct their

@@ -9,15 +9,15 @@ materially change.
 - Private repository: `https://github.com/mike-steciuk/campnet`
 - Default branch: `main`
 - Active branch: `feature/device-speedtest-at-registry`
-- Feature commit before this handoff update: `2624f93`
+- Latest committed handoff baseline: `c16cea0`
 - Python: 3.11 or newer
 - Survey schema: 1
 - Application version: 0.1.0
 
 The active branch contains device profiles, router/collector speed tests, GNSS
-collection, the AT registry, generated reference, and tests. At this writing it
-has not been pushed. A local commit reaches the home computer only if the
-branch is pushed or the whole repository, including `.git`, is copied.
+collection, the AT registry, generated reference, per-carrier signal reporting,
+an interactive historical-survey browser, and tests. The branch is intended to
+be pushed to the private GitHub repository as part of this update.
 
 ## Current architecture
 
@@ -27,7 +27,7 @@ Device profile
   -> SurveyCollector
   -> versioned Survey JSON with raw provider responses
   -> Quectel parser and normalized models
-  -> human-readable console report
+  -> human-readable console report and interactive survey browser
 ```
 
 The Survey UUID is the stable join key for future related datasets. The Survey
@@ -79,6 +79,13 @@ key and SSH agent for the router root account.
   Preserve its survey error details and diagnose this next.
 - Provider failures are non-fatal; a failed speed test does not discard modem,
   scan, GNSS, or other successful observations.
+- Historical surveys are reparsed with the current code when displayed. If a
+  stored survey includes usable `+QSCAN:` rows, the current report can add a
+  carrier signal comparison without changing the original JSON or rescanning.
+- The first Port Sanilac Marina scan (site 108, 2026-08-15 02:10:30 UTC)
+  recorded `AT+QSCAN=1` but received only `OK`, with no `+QSCAN:` rows. It
+  therefore cannot provide historical per-carrier signal strength. An `OK`
+  response acknowledges the command but does not prove that cells were found.
 
 ## Private and local files
 
@@ -148,6 +155,16 @@ Use `--no-speed-test` while diagnosing the current failure, `--no-gps` when a
 location attempt is unwanted, or `--profile continuous` for lightweight
 collection without slow scans, GNSS state changes, or speed tests.
 
+Review historical surveys without remembering filenames or parameters:
+
+```powershell
+# Browse location, site, then reverse-chronological scan date.
+.\review-surveys.ps1
+```
+
+The browser recursively reads JSON beneath `surveys/`, skips malformed files
+with warnings, and renders selected surveys using the latest report logic.
+
 ## Immediate next work
 
 1. Inspect the latest ignored survey's speed-test errors without exposing its
@@ -162,6 +179,9 @@ collection without slow scans, GNSS state changes, or speed tests.
    window while always restoring prior state.
 6. Add Markdown/CSV exports and historical comparisons after collection is
    reliable.
+7. Investigate successful `QSCAN` acknowledgements that contain no cell rows;
+   record whether this depends on registration, firmware, scan timing, or
+   transport behavior instead of assuming a universal cause.
 
 ## Safety rules
 

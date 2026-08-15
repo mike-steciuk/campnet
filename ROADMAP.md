@@ -1,6 +1,6 @@
 # Roadmap
 
-Status reflects the implementation as of 2026-08-12. Checked items are
+Status reflects the implementation as of 2026-08-15. Checked items are
 implemented in the current feature branch; they may still need field hardening.
 
 ## 0.1 - Foundation
@@ -27,6 +27,8 @@ implemented in the current feature branch; they may still need field hardening.
 - [x] Conservative signal-quality analysis
 - [x] Human-readable console report
 - [x] Configurable router/collector `speedtest-cli` integration
+- [x] Passive per-carrier signal comparison from visible-cell scans
+- [x] Interactive local survey browser by location, site, and scan date
 - [ ] Diagnose and harden Speedtest.net HTTP 429 behavior
 - [ ] Add an alternative router-side test adapter such as LibreSpeed
 - [ ] Markdown report/export

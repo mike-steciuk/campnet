@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Added an interactive console survey browser organized by location, site,
+  and reverse-chronological scan date, plus a PowerShell launcher.
+- Added ranked per-carrier signal reporting from passive visible-cell scans,
+  including quality, detected-cell counts, and explicit coverage caveats.
 - Updated roadmap, setup guidance, and durable handoff context for moving
   development to another computer.
 - Added an authoritative AT command registry, typed validation and error
