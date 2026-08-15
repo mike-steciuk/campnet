@@ -27,6 +27,8 @@ def test_human_report_includes_radio_interpretation() -> None:
     assert "AT&T: FDD LTE, LTE BAND 2" in report
     assert "RSRP: -108 dBm (Weak)" in report
     assert "active non-standalone 5G" in report
+    assert "Carrier aggregation - AT&T (PLMN 310410)" in report
+    assert "Active component carriers for the registered connection:" in report
 
 
 def test_report_summarizes_visible_carriers() -> None:
@@ -115,6 +117,25 @@ def test_report_includes_restorable_modem_preferences() -> None:
 
     assert "mode_pref: AUTO" in report
     assert "lte_band: 2:5:12:14:66" in report
+
+
+def test_carrier_aggregation_uses_cautious_unknown_fallback() -> None:
+    raw = {
+        "AT+QCAINFO#1": (
+            '+QCAINFO: "PCC",1125,75,"LTE BAND 2",1,250,-108,-14,-75,11\nOK\n'
+        )
+    }
+    survey = Survey(
+        timestamp=utc_now(),
+        metadata=SurveyMetadata(),
+        provider_results=(
+            ProviderResult(provider="at", collected_at=utc_now(), raw_responses=raw),
+        ),
+    )
+
+    report = format_survey(survey)
+
+    assert "Carrier aggregation (registered carrier unknown)" in report
 
 
 def test_report_includes_speedtest_result() -> None:

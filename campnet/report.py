@@ -92,9 +92,12 @@ def _radio_lines(snapshot: RadioSnapshot, *, has_speedtest: bool) -> list[str]:
     for cell in snapshot.serving_cells:
         lines.extend(_cell_lines(cell))
 
-    lines.extend(["", "Carrier aggregation", "-------------------"])
+    aggregation_heading = _carrier_aggregation_heading(snapshot)
+    lines.extend(["", aggregation_heading, "-" * len(aggregation_heading)])
     if not snapshot.carrier_components:
         lines.append("No carrier-aggregation components reported.")
+    else:
+        lines.append("Active component carriers for the registered connection:")
     for component in snapshot.carrier_components:
         details = [component.role, component.band or component.technology]
         if component.channel is not None:
@@ -118,6 +121,20 @@ def _radio_lines(snapshot: RadioSnapshot, *, has_speedtest: bool) -> list[str]:
     lines.extend(["", "Interpretation", "--------------"])
     lines.extend(_interpretation(snapshot, has_speedtest=has_speedtest))
     return lines
+
+
+def _carrier_aggregation_heading(snapshot: RadioSnapshot) -> str:
+    plmns = {network.plmn for network in snapshot.networks if network.plmn}
+    plmns.update(
+        f"{cell.mcc}{cell.mnc}"
+        for cell in snapshot.serving_cells
+        if cell.mcc is not None and cell.mnc is not None
+    )
+    if len(plmns) != 1:
+        return "Carrier aggregation (registered carrier unknown)"
+    plmn = next(iter(plmns))
+    carrier = _CARRIERS.get(plmn, f"PLMN {plmn}")
+    return f"Carrier aggregation - {carrier} (PLMN {plmn})"
 
 
 def _visible_network_lines(snapshot: RadioSnapshot) -> list[str]:

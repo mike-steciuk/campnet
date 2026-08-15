@@ -332,6 +332,13 @@ SIM can register or as a prediction of capacity, latency, upload performance,
 or throughput. Unknown PLMNs remain labeled by numeric identity rather than
 being assigned a guessed carrier.
 
+Carrier-aggregation components describe the active registered connection, not
+passively scanned competing carriers. Reports label the aggregation section
+with the registered carrier and numeric PLMN when exactly one identity can be
+derived from registration or serving-cell data. If identity is missing or
+ambiguous, the report says that the registered carrier is unknown rather than
+guessing.
+
 Historical reports apply current parsing and reporting logic to preserved raw
 responses without mutating the stored survey. A successful command status alone
 is not measurement data: for example, `AT+QSCAN=1` followed only by `OK` yields

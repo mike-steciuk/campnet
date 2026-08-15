@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Labeled carrier-aggregation results with the registered carrier and PLMN,
+  with an explicit unknown fallback when attribution is ambiguous.
 - Added an interactive console survey browser organized by location, site,
   and reverse-chronological scan date, plus a PowerShell launcher.
 - Added ranked per-carrier signal reporting from passive visible-cell scans,
