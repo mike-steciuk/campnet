@@ -7,6 +7,7 @@ import time
 from collections.abc import Callable
 
 from campnet.at import ATClient, ATExchange
+from campnet.at_registry import command
 from campnet.models import JsonValue, ProviderResult, utc_now
 from campnet.providers.base import CollectionContext
 
@@ -35,19 +36,27 @@ class GNSSProvider:
         del context
         raw: dict[str, str] = {}
         errors: list[str] = []
-        state = self._client.execute("AT+QGPS?")
+        state = self._client.execute(command("gnss.state").render())
         _record(state, raw, errors)
         initially_enabled = _gps_enabled(state.response or "")
         enabled_by_campnet = False
         location: dict[str, JsonValue] = {}
         try:
             if not initially_enabled and self._enable_if_needed:
-                enable = self._client.execute("AT+QGPS=1", timeout_seconds=30.0)
+                enable_spec = command("gnss.enable")
+                enable = self._client.execute(
+                    enable_spec.render(),
+                    timeout_seconds=enable_spec.execution.recommended_timeout_seconds,
+                )
                 _record(enable, raw, errors)
                 enabled_by_campnet = _modem_ok(enable.response or "")
             if initially_enabled or enabled_by_campnet:
                 for attempt_number in range(self._fix_attempts):
-                    fix = self._client.execute("AT+QGPSLOC=2", timeout_seconds=15.0)
+                    fix_spec = command("gnss.location")
+                    fix = self._client.execute(
+                        fix_spec.render(),
+                        timeout_seconds=fix_spec.execution.recommended_timeout_seconds,
+                    )
                     _record(fix, raw, errors, key_suffix=f"fix{attempt_number + 1}")
                     location = _parse_location(fix.response or "")
                     if location:
@@ -58,7 +67,11 @@ class GNSSProvider:
                 errors.append("GNSS is disabled; continuous profile does not change modem state")
         finally:
             if enabled_by_campnet:
-                stop = self._client.execute("AT+QGPSEND", timeout_seconds=15.0)
+                stop_spec = command("gnss.stop")
+                stop = self._client.execute(
+                    stop_spec.render(),
+                    timeout_seconds=stop_spec.execution.recommended_timeout_seconds,
+                )
                 _record(stop, raw, errors)
         if not location and (initially_enabled or enabled_by_campnet):
             errors.append("GNSS did not acquire a location fix during the collection window")

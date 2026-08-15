@@ -6,21 +6,36 @@ RVers, and remote workers.
 > CampNet measures what the modem observes—not just what the carrier
 > advertises.
 
-The project is in its bootstrap phase. The current executable establishes the
-provider architecture, canonical Survey model, and JSON persistence layer.
-Hardware collection providers will be added against captured modem fixtures.
+The project is an early working prototype. It can collect live Quectel modem
+data through a GL.iNet router, preserve raw responses, parse radio data,
+temporarily enable GNSS for one-off surveys, and run configurable router- or
+collector-side speed tests.
 
 ## Quick start
 
 ```powershell
-python -m campnet collect --campground "Petoskey State Park" --site "212"
-python -m campnet show surveys\<survey-file>.json
+.\.venv\Scripts\python.exe -m campnet collect `
+  --campground "Petoskey State Park" `
+  --site "30"
+.\.venv\Scripts\python.exe -m campnet show surveys\<survey-file>.json
 ```
+
+Browse saved surveys interactively by location, site, and scan date:
+
+```powershell
+# Open the numbered console survey browser without remembering file names.
+.\review-surveys.ps1
+```
+
+The equivalent direct command is `.\.venv\Scripts\python.exe -m campnet review`.
+Historical JSON is not rewritten: it is reparsed using the latest reporting
+logic. Carrier comparisons appear only when the stored scan contains usable
+`+QSCAN:` cell rows with PLMN and RSRP measurements.
 
 Replay the checked-in modem fixture through the AT provider:
 
 ```powershell
-python -m campnet collect `
+.\.venv\Scripts\python.exe -m campnet collect `
   --at-fixture tests\fixtures\quectel_basic.json `
   --profile continuous `
   --output surveys\fixture-survey.json
@@ -29,10 +44,16 @@ python -m campnet collect `
 Collect live read-only modem observations through a configured router:
 
 ```powershell
-python -m campnet collect --ssh-host 192.168.8.1
+Copy-Item devices.example.toml devices.toml
+.\.venv\Scripts\python.exe -m campnet collect --device gl-x3000
 ```
 
 The live transport uses OpenSSH batch mode and GL.iNet's `gl_modem` helper.
+
+AT commands are defined once in `campnet.at_registry`. The generated
+[command reference](docs/at-command-reference.md) documents their purpose,
+safety, timeouts, parsers, and expected response families. Regenerate it with
+`python -m campnet.at_docs` after reviewing a registry change.
 It does not accept or persist passwords, passphrases, or private keys.
 Collection prints a human-readable report and saves the complete versioned
 survey, including raw responses, beneath the ignored `surveys/` directory.
@@ -40,13 +61,25 @@ The default `one-off` profile includes slow `COPS` and `QSCAN` discovery plus
 temporary GNSS enablement. CampNet restores GNSS to its previous disabled
 state afterward. Use `--profile continuous` for fast radio sampling; that
 profile omits slow discovery and never enables GNSS. Use `--no-gps` to omit
-GNSS from an individual one-off survey.
+GNSS from an individual one-off survey. One-off surveys also auto-detect an
+Ookla or `speedtest-cli` executable and record normalized performance plus its
+raw JSON output. Use `--no-speed-test` on metered connections.
 
-Use `--output` to choose a specific JSON path. No provider currently changes
-modem state; GNSS enablement will remain opt-in when its provider is added.
+`devices.toml` is local and Git-ignored. Device profiles select a known
+transport and speed-test adapter; they cannot inject arbitrary remote command
+arguments. For router-side tests, CampNet verifies the configured default-route
+interface before starting and can fall back to the collector client.
+
+Use `--output` to choose a specific JSON path. A comprehensive one-off survey
+may temporarily enable GNSS and restores it afterward; continuous collection
+does not change GNSS state.
 
 See [CampNet_Development_Spec.md](CampNet_Development_Spec.md) for the living
 product and engineering specification.
+
+See [docs/project-handoff.md](docs/project-handoff.md) when moving development
+to another computer. It records current status, known hardware behavior,
+private local files, setup steps, and immediate next work.
 
 Router authentication is intentionally handled outside CampNet. See
 [docs/development.md](docs/development.md) for the key-based OpenWrt SSH setup.

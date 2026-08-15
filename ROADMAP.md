@@ -1,27 +1,52 @@
 # Roadmap
 
-## 0.1 — Foundation
+Status reflects the implementation as of 2026-08-15. Checked items are
+implemented in the current feature branch; they may still need field hardening.
 
-- Canonical Survey schema
-- Provider contract and collection orchestration
-- JSON persistence and CLI
-- Captured-response fixture strategy
+## 0.1 - Foundation
 
-## 0.2 — Modem collection
+- [x] Canonical Survey schema with UUID identity
+- [x] Provider contract and collection orchestration
+- [x] JSON persistence and CLI
+- [x] Captured-response fixture strategy
+- [x] Sensitive survey and local device configuration exclusions
 
-- AT transport with retries and timeouts
-- Quectel response capture and parsers
-- Serving, neighboring, and visible cells
-- Optional GNSS provider
+## 0.2 - Modem collection
 
-## 0.3 — Analysis and reporting
+- [x] SSH/GL.iNet AT transport with retries and timeouts
+- [x] Quectel response capture and parsers
+- [x] Serving, neighboring, carrier-aggregation, and visible-cell data
+- [x] Reversible one-off GNSS provider
+- [x] Band and RAT preference snapshots
+- [x] Authoritative AT command registry and generated reference
+- [ ] Persist structured validation records from live command executions
+- [ ] Add direct serial/MHI and QMI/MBIM transports where useful
 
-- Signal-quality analysis
-- Console and Markdown reports
-- Speed-test correlation and recommendations
+## 0.3 - Performance, analysis, and reporting
 
-## 0.4 — History
+- [x] Conservative signal-quality analysis
+- [x] Human-readable console report
+- [x] Configurable router/collector `speedtest-cli` integration
+- [x] Passive per-carrier signal comparison from visible-cell scans
+- [x] Interactive local survey browser by location, site, and scan date
+- [ ] Diagnose and harden Speedtest.net HTTP 429 behavior
+- [ ] Add an alternative router-side test adapter such as LibreSpeed
+- [ ] Markdown report/export
+- [ ] Correlate performance with cells, bands, configuration, and location
+- [ ] Actionable carrier, placement, antenna, and congestion recommendations
 
-- Campground and campsite comparisons
-- Carrier and equipment trends
-- CSV and HTML exports
+## 0.4 - Continuous collection and history
+
+- [ ] Define continuous-session/sample schema and safe sampling cadence
+- [ ] Campground and campsite comparisons
+- [ ] Carrier and equipment trends
+- [ ] CSV and HTML exports
+- [ ] Map and time-series views with coordinate privacy controls
+
+## Later
+
+- [ ] Controlled band experiments with snapshot, explicit authorization,
+  restoration, and verification
+- [ ] Additional modem and router device profiles
+- [ ] Packaging and installation workflow for collector computers
+- [ ] Automated redaction tooling for shareable fixtures and diagnostics

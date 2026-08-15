@@ -32,3 +32,17 @@ def test_unknown_schema_is_rejected() -> None:
         assert "unsupported survey schema" in str(error)
     else:
         raise AssertionError("unknown schema version was accepted")
+
+
+def test_new_surveys_receive_unique_ids() -> None:
+    first = Survey(timestamp=utc_now(), metadata=SurveyMetadata())
+    second = Survey(timestamp=utc_now(), metadata=SurveyMetadata())
+
+    assert first.survey_id != second.survey_id
+
+
+def test_legacy_survey_without_id_gets_stable_derived_id() -> None:
+    document = Survey(timestamp=utc_now(), metadata=SurveyMetadata()).to_dict()
+    del document["survey_id"]
+
+    assert Survey.from_dict(document).survey_id == Survey.from_dict(document).survey_id

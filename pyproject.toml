@@ -13,6 +13,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["mypy>=1.10", "pytest>=8.0", "ruff>=0.5"]
+speedtest = ["speedtest-cli>=2.1.3"]
 
 [project.scripts]
 campnet = "campnet.cli:main"

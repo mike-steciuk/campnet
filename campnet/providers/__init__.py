@@ -3,6 +3,7 @@
 from campnet.providers.at import CONTINUOUS_COMMANDS, ONE_OFF_COMMANDS, ATProvider
 from campnet.providers.base import CollectionContext, DataProvider
 from campnet.providers.gnss import GNSSProvider
+from campnet.providers.speedtest import SpeedTestProvider, SSHSpeedTestAdapter
 from campnet.providers.system import SystemProvider
 
 __all__ = [
@@ -12,5 +13,7 @@ __all__ = [
     "DataProvider",
     "GNSSProvider",
     "ONE_OFF_COMMANDS",
+    "SSHSpeedTestAdapter",
+    "SpeedTestProvider",
     "SystemProvider",
 ]

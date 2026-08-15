@@ -3,36 +3,29 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
 
 from campnet.at import ATClient
+from campnet.at_registry import ATCommand, command, require_authorization
 from campnet.models import JsonValue, ProviderResult, utc_now
 from campnet.providers.base import CollectionContext
 
-
-@dataclass(frozen=True, slots=True)
-class ATCommandSpec:
-    command: str
-    timeout_seconds: float = 10.0
-
-
 CONTINUOUS_COMMANDS = (
-    ATCommandSpec("ATI"),
-    ATCommandSpec("AT+QNWINFO"),
-    ATCommandSpec('AT+QENG="servingcell"'),
-    ATCommandSpec('AT+QENG="neighbourcell"'),
-    ATCommandSpec("AT+QCAINFO"),
+    command("modem.identity"),
+    command("network.current"),
+    command("network.serving_cell"),
+    command("network.neighbor_cells"),
+    command("network.carrier_aggregation"),
 )
 
 ONE_OFF_COMMANDS = CONTINUOUS_COMMANDS + (
-    ATCommandSpec('AT+QNWPREFCFG="mode_pref"'),
-    ATCommandSpec('AT+QNWPREFCFG="rat_acq_order"'),
-    ATCommandSpec('AT+QNWPREFCFG="lte_band"'),
-    ATCommandSpec('AT+QNWPREFCFG="nsa_nr5g_band"'),
-    ATCommandSpec('AT+QNWPREFCFG="nr5g_band"'),
-    ATCommandSpec('AT+QNWPREFCFG="nr5g_disable_mode"'),
-    ATCommandSpec("AT+COPS=?", timeout_seconds=180.0),
-    ATCommandSpec("AT+QSCAN=1", timeout_seconds=240.0),
+    command("config.mode_preference"),
+    command("config.rat_order"),
+    command("config.lte_bands"),
+    command("config.nsa_bands"),
+    command("config.sa_bands"),
+    command("config.nr_mode"),
+    command("network.operator_scan"),
+    command("network.cell_scan"),
 )
 
 
@@ -40,10 +33,13 @@ class ATProvider:
     def __init__(
         self,
         client: ATClient,
-        commands: Iterable[ATCommandSpec] = CONTINUOUS_COMMANDS,
+        commands: Iterable[ATCommand] = CONTINUOUS_COMMANDS,
+        *,
+        authorized_command_ids: frozenset[str] = frozenset(),
     ) -> None:
         self._client = client
         self._commands = tuple(commands)
+        self._authorized_command_ids = authorized_command_ids
 
     @property
     def name(self) -> str:
@@ -55,11 +51,14 @@ class ATProvider:
         errors: list[str] = []
         commands: list[JsonValue] = []
         for spec in self._commands:
-            command = spec.command
-            exchange = self._client.execute(command, timeout_seconds=spec.timeout_seconds)
+            require_authorization(spec, authorized=spec.identifier in self._authorized_command_ids)
+            rendered = spec.render()
+            exchange = self._client.execute(
+                rendered, timeout_seconds=spec.execution.recommended_timeout_seconds
+            )
             attempt_data: list[JsonValue] = []
             for attempt in exchange.attempts:
-                key = f"{command}#{attempt.attempt}"
+                key = f"{rendered}#{attempt.attempt}"
                 if attempt.response is not None:
                     raw_responses[key] = attempt.response
                 if attempt.error is not None:
@@ -72,7 +71,12 @@ class ATProvider:
                     }
                 )
             commands.append(
-                {"command": command, "succeeded": exchange.succeeded, "attempts": attempt_data}
+                {
+                    "command_id": spec.identifier,
+                    "command": rendered,
+                    "succeeded": exchange.succeeded,
+                    "attempts": attempt_data,
+                }
             )
         return ProviderResult(
             provider=self.name,

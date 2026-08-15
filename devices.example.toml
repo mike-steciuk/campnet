@@ -1,0 +1,17 @@
+schema_version = 1
+default_device = "gl-x3000"
+
+[devices.gl-x3000]
+name = "GL.iNet GL-X3000"
+type = "glinet"
+ssh_host = "192.168.8.1"
+ssh_user = "root"
+modem_bus = "1-1.2"
+
+[devices.gl-x3000.speedtest]
+execution = "router"
+adapter = "speedtest-cli"
+executable = "/usr/bin/speedtest-cli"
+expected_interface = "rmnet_mhi0"
+timeout_seconds = 180
+fallback = "collector"
