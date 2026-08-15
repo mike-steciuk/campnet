@@ -17,16 +17,19 @@ CONTINUOUS_COMMANDS = (
     command("network.carrier_aggregation"),
 )
 
-ONE_OFF_COMMANDS = CONTINUOUS_COMMANDS + (
+CONFIGURATION_COMMANDS = (
     command("config.mode_preference"),
     command("config.rat_order"),
     command("config.lte_bands"),
     command("config.nsa_bands"),
     command("config.sa_bands"),
     command("config.nr_mode"),
-    command("network.operator_scan"),
-    command("network.cell_scan"),
 )
+
+PASSIVE_SCAN_COMMANDS = (command("network.operator_scan"), command("network.cell_scan"))
+SIM_SPECIFIC_COMMANDS = CONTINUOUS_COMMANDS + CONFIGURATION_COMMANDS
+ONE_OFF_COMMANDS = SIM_SPECIFIC_COMMANDS + PASSIVE_SCAN_COMMANDS
+OPTIMIZE_COMMANDS = SIM_SPECIFIC_COMMANDS
 
 
 class ATProvider:

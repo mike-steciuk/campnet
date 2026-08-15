@@ -57,13 +57,18 @@ safety, timeouts, parsers, and expected response families. Regenerate it with
 It does not accept or persist passwords, passphrases, or private keys.
 Collection prints a human-readable report and saves the complete versioned
 survey, including raw responses, beneath the ignored `surveys/` directory.
-The default `one-off` profile includes slow `COPS` and `QSCAN` discovery plus
-temporary GNSS enablement. CampNet restores GNSS to its previous disabled
-state afterward. Use `--profile continuous` for fast radio sampling; that
-profile omits slow discovery and never enables GNSS. Use `--no-gps` to omit
-GNSS from an individual one-off survey. One-off surveys also auto-detect an
-Ookla or `speedtest-cli` executable and record normalized performance plus its
-raw JSON output. Use `--no-speed-test` on metered connections.
+The default `one-off` profile includes slow `COPS` and `QSCAN` discovery,
+temporary GNSS enablement, and automatic sequential collection of both SIMs
+when the modem explicitly reports both slots populated. CampNet restores GNSS
+and the originally selected SIM afterward. It does not run a speed test.
+
+Use `--profile continuous` for fast sampling without slow discovery, GNSS
+state changes, SIM switching, or load tests. If GNSS is already enabled,
+continuous mode makes one location query but never enables or disables it. Use `--optimize` when
+diagnosing an existing active connection; that profile captures active radio
+and configuration data and runs the configured speed test. Add
+`--no-speed-test` to optimize without load, or `--no-gps` to omit GNSS from a
+one-off survey.
 
 `devices.toml` is local and Git-ignored. Device profiles select a known
 transport and speed-test adapter; they cannot inject arbitrary remote command

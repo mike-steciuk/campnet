@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Separate generic multi-SIM orchestration from vendor-specific slot control
+  and Quectel response parsing, with an extension contract for new devices.
+
+- Documented the sequential multi-SIM survey model, privacy boundaries,
+  switching safety, and phased implementation plan.
+- Added conservative dual-SIM detection, sequential active-radio collection,
+  mandatory original-slot restoration, and an `optimize`-only speed-test profile.
+- Added per-slot multi-SIM reporting; live two-SIM validation remains pending.
+- Continuous surveys now record an existing GNSS fix with one query while
+  leaving disabled receivers and acquisition state unchanged.
 - Labeled carrier-aggregation results with the registered carrier and PLMN,
   with an explicit unknown fallback when attribution is ambiguous.
 - Added an interactive console survey browser organized by location, site,

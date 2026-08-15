@@ -32,6 +32,7 @@ def format_survey(survey: Survey) -> str:
                 has_speedtest=speedtest_result is not None and speedtest_result.succeeded,
             )
         )
+        lines.extend(_multi_sim_lines(at_result))
     gnss_result = next(
         (result for result in survey.provider_results if result.provider == "gnss"), None
     )
@@ -201,8 +202,7 @@ def _carrier_signal_lines(snapshot: RadioSnapshot) -> list[str]:
             gap = f", {strongest_rsrp - best.rsrp_dbm} dB below strongest"
         cell_word = "cell" if len(cells) == 1 else "cells"
         lines.append(
-            f"{rank}. {carrier}: {radio}, {rsrp}, {rsrq}; "
-            f"{len(cells)} {cell_word} detected{gap}"
+            f"{rank}. {carrier}: {radio}, {rsrp}, {rsrq}; {len(cells)} {cell_word} detected{gap}"
         )
     lines.append(
         "Coverage comparison only: a stronger detected signal may improve reception, "
@@ -246,6 +246,58 @@ def _provider_lines(results: tuple[ProviderResult, ...]) -> list[str]:
         state = "OK" if result.succeeded else "FAILED"
         lines.append(f"{result.provider}: {state}")
         lines.extend(f"  {error}" for error in result.errors)
+    return lines
+
+
+def _multi_sim_lines(result: ProviderResult) -> list[str]:
+    value = result.data.get("multi_sim")
+    if not isinstance(value, dict):
+        return []
+    lines = ["", "Multi-SIM collection", "--------------------"]
+    original_slot = value.get("original_slot")
+    installed = value.get("installed_slots")
+    dual_detected = value.get("dual_sim_detected") is True
+    restored = value.get("restored_original_slot")
+    lines.append(f"Original active slot: {original_slot or 'unknown'}")
+    if isinstance(installed, list) and installed:
+        lines.append("Detected slots:      " + ", ".join(str(slot) for slot in installed))
+    else:
+        lines.append("Detected slots:      unknown")
+    lines.append(f"Two SIMs detected:   {'yes' if dual_detected else 'no'}")
+    if restored is not None:
+        lines.append(f"Original restored:   {'yes' if restored is True else 'no'}")
+    segments = value.get("segments")
+    if not isinstance(segments, list):
+        return lines
+    for segment in segments:
+        if not isinstance(segment, dict):
+            continue
+        slot = segment.get("slot")
+        registered = segment.get("registered") is True
+        details = [
+            f"SIM slot {slot or 'unknown'}",
+            "registered" if registered else "not registered",
+        ]
+        nested = segment.get("at_result")
+        if isinstance(nested, dict):
+            try:
+                nested_result = ProviderResult.from_dict(nested)
+                snapshot = parse_quectel_snapshot(nested_result.raw_responses)
+            except ValueError:
+                snapshot = RadioSnapshot()
+            plmns = {network.plmn for network in snapshot.networks if network.plmn}
+            if len(plmns) == 1:
+                plmn = next(iter(plmns))
+                details.append(f"{_CARRIERS.get(plmn, f'PLMN {plmn}')} ({plmn})")
+            strongest = max(
+                (cell.rsrp_dbm for cell in snapshot.serving_cells if cell.rsrp_dbm is not None),
+                default=None,
+            )
+            if strongest is not None:
+                details.append(f"best serving RSRP {strongest} dBm ({rsrp_quality(strongest)})")
+            if snapshot.carrier_components:
+                details.append(f"{len(snapshot.carrier_components)} aggregation components")
+        lines.append(" | ".join(details))
     return lines
 
 

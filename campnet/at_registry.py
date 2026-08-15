@@ -321,9 +321,72 @@ _COMMANDS = (
         side_effects=("Changes GNSS state.",),
         related=("gnss.enable",),
     ),
+    _entry(
+        "sim.active_slot",
+        "AT+QUIMSLOT?",
+        "SIM",
+        "Queries the active SIM slot.",
+        "Records the original slot before multi-SIM collection.",
+        parser="campnet.providers.multisim.parse_active_slot",
+    ),
+    _entry(
+        "sim.dual_slot_status",
+        'AT+QSIMCFG="dual_slot_status"',
+        "SIM",
+        "Queries dual-slot presence information.",
+        "Enables switching only when both cards are explicitly detected.",
+        parser="campnet.providers.multisim.parse_installed_slots",
+        notes=("Response shape is firmware-dependent; unknown shapes must not trigger switching.",),
+    ),
+    _entry(
+        "sim.readiness",
+        "AT+CPIN?",
+        "SIM",
+        "Queries active SIM readiness.",
+        "Waits for the selected card to initialize before collection.",
+        parser="campnet.providers.multisim.sim_ready",
+    ),
+    _entry(
+        "network.eps_registration",
+        "AT+CEREG?",
+        "network registration",
+        "Queries EPS registration state.",
+        "Waits for home or roaming registration after a slot switch.",
+        parser="campnet.providers.multisim.registration_ready",
+    ),
 )
 
-COMMAND_REGISTRY = {command.identifier: command for command in _COMMANDS}
+_SIM_SWITCH = ATCommand(
+    identifier="sim.switch_slot",
+    command="AT+QUIMSLOT=<slot>",
+    category="SIM",
+    summary="Selects the active SIM slot.",
+    purpose="Collects each installed SIM and restores the original slot.",
+    command_type=CommandType.SET,
+    expected_response=(
+        "OK or an exact modem error; SIM initialization and registration follow asynchronously."
+    ),
+    parser=None,
+    safety=Safety.CONNECTIVITY_IMPACTING,
+    parameters=(Parameter("slot", "1 or 2", constraints="single decimal slot number"),),
+    side_effects=(
+        "Interrupts cellular connectivity.",
+        "Persists the selected slot and requires restoration.",
+    ),
+    execution=ExecutionCharacteristics(
+        "switch is immediate; reconnection may take minutes",
+        30.0,
+        partial_or_asynchronous=True,
+    ),
+    prerequisites=(
+        "Requested slot is populated.",
+        "Explicit multi-SIM survey authorization.",
+    ),
+    related_commands=("sim.active_slot", "sim.readiness", "network.eps_registration"),
+    references=("Quectel RG50xQ/RM5xxQ Series AT Commands Manual",),
+)
+
+COMMAND_REGISTRY = {item.identifier: item for item in (*_COMMANDS, _SIM_SWITCH)}
 
 
 def command(identifier: str) -> ATCommand:

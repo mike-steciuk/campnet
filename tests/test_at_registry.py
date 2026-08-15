@@ -17,7 +17,7 @@ from campnet.providers.base import CollectionContext
 
 
 def test_registry_identifiers_are_unique_and_metadata_is_complete() -> None:
-    assert len(COMMAND_REGISTRY) == 17
+    assert len(COMMAND_REGISTRY) == 22
     assert len(COMMAND_REGISTRY) == len(set(COMMAND_REGISTRY))
     for identifier, item in COMMAND_REGISTRY.items():
         assert identifier == item.identifier

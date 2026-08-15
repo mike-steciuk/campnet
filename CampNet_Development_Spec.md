@@ -314,6 +314,9 @@ Do not automatically enable GNSS unless explicitly requested.
 For explicitly requested comprehensive one-off surveys, CampNet may
 temporarily enable GNSS, attempt to obtain a fix, and then restore the prior
 GNSS state. Continuous surveys must not repeatedly enable or disable GNSS.
+When GNSS is already enabled, a continuous survey makes one location query and
+records an immediately available fix. It does not poll for acquisition, wait
+between attempts, or treat the absence of a current fix as a provider failure.
 
 ------------------------------------------------------------------------
 
@@ -356,15 +359,69 @@ configuration snapshot. Future band-lock experiments must construct their
 restore operation from that snapshot, verify every write response, re-query
 the settings after restoration, and record both before and after states.
 
+## Multi-SIM Surveys
+
+Dual-SIM, single-standby devices require sequential collection because only
+one SIM is active at a time. Passive operator and visible-cell scans may
+observe multiple providers with either SIM active, but registration, serving
+cells, carrier aggregation, APN/data-route state, and performance belong to
+the active SIM only.
+
+A multi-SIM survey uses one parent session and one segment per activated slot.
+It records the original slot, shared passive/GNSS context, active-slot identity
+using redacted or locally safe labels, registration state, raw and normalized
+radio observations, and verified restoration evidence. Slot switching is
+authorized by explicitly starting the manual one-off profile; it interrupts
+connectivity and may persist.
+
+The default comprehensive workflow runs slow passive scans once, runs the
+active-SIM radio subset for each usable slot, and restores the original slot.
+It performs no speed/load test. An opt-in mode may later repeat passive scans
+for each SIM to detect SIM or firmware bias. Continuous and optimize profiles
+must not cycle slots automatically. See `docs/multi-sim-design.md` for details.
+
+### Multi-SIM extension contract
+
+Multi-SIM support has three deliberately separate layers:
+
+1. `SIMSlotController` is the hardware-neutral device boundary. It returns
+   typed inventory, selection, and readiness results, including raw evidence
+   and non-fatal errors. It has no survey, reporting, or carrier knowledge.
+2. A device adapter implements that controller with vendor commands. The
+   Quectel implementation owns `QUIMSLOT`, `QSIMCFG`, `CPIN`, and `CEREG`
+   execution and parsing. Vendor commands and response assumptions must not
+   appear in the generic orchestrator.
+3. `MultiSIMProvider` composes the controller with ordinary `DataProvider`
+   instances: one for shared observations and one for active-slot segments.
+   It visits every unique installed slot returned by the adapter, isolates a
+   slot failure, and restores the original slot in a `finally` path.
+
+Vendor response parsers must be pure and conservative. An absent, malformed,
+or undocumented response returns unknown/empty state; it must never authorize
+a switch based on a guess. Adapters preserve exact raw responses and transport
+errors for every inventory, selection, verification, and readiness operation.
+Selection must include a post-write active-slot query. A successful `OK` alone
+is not proof that selection or restoration occurred.
+
+To add a modem family, implement `SIMSlotController` in a vendor-specific
+module, register every mutating command with the correct safety and restoration
+metadata, and construct the generic provider with shared and segment data
+providers. Add sanitized parser fixtures for valid, partial, malformed, and
+unsupported responses; adapter tests for failed selection and verification;
+and an orchestrator test proving all reported slot IDs are visited and the
+original is restored. Document live firmware, router policy, APN interaction,
+registration timing, and restoration evidence separately from mock results.
+
 ------------------------------------------------------------------------
 
 # Speed Tests
 
 Auto-detect supported CLI.
 
-Comprehensive one-off surveys run a speed test by default when a supported
-client is available. Continuous surveys omit speed tests. Users must be able
-to disable a one-off speed test on metered connections.
+Speed tests run only in the explicit `--optimize` profile, where the user already
+has an active connection and is measuring changes intended to improve it.
+One-off manual and continuous surveys omit load tests. Users may also disable
+the optimize speed test for a radio/configuration-only diagnostic.
 
 Collect:
 
@@ -380,7 +437,7 @@ router because results represent the modem path only when traffic is routed
 through that modem.
 
 The survey UUID is the stable join key for exports and related datasets.
-Provider results collected as part of a one-off survey remain embedded in that
+Provider results collected as part of a survey remain embedded in that
 survey. Future continuous sessions may use the survey UUID as a parent/session
 identifier while assigning individual sample identifiers and timestamps.
 

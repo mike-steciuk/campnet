@@ -308,6 +308,27 @@ Expected response: Command-specific result lines followed by OK, or an exact mod
 gl_modem -B 1-1.2 AT 'AT+QNWINFO'
 ```
 
+## `network.eps_registration`
+
+- Command: `AT+CEREG?`
+- Category: network registration
+- Type: query
+- Safety: read-only
+- Timeout: 10 seconds
+- Parser: `campnet.providers.multisim.registration_ready`
+
+Queries EPS registration state.
+
+Purpose: Waits for home or roaming registration after a slot switch.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+```bash
+# Queries EPS registration state.
+# Waits for home or roaming registration after a slot switch.
+gl_modem -B 1-1.2 AT 'AT+CEREG?'
+```
+
 ## `network.neighbor_cells`
 
 - Command: `AT+QENG="neighbourcell"`
@@ -373,4 +394,93 @@ Expected response: Command-specific result lines followed by OK, or an exact mod
 # Reports engineering data for serving cells.
 # Captures LTE and NR serving-cell radio measurements.
 gl_modem -B 1-1.2 AT 'AT+QENG="servingcell"'
+```
+
+## `sim.active_slot`
+
+- Command: `AT+QUIMSLOT?`
+- Category: SIM
+- Type: query
+- Safety: read-only
+- Timeout: 10 seconds
+- Parser: `campnet.providers.multisim.parse_active_slot`
+
+Queries the active SIM slot.
+
+Purpose: Records the original slot before multi-SIM collection.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+```bash
+# Queries the active SIM slot.
+# Records the original slot before multi-SIM collection.
+gl_modem -B 1-1.2 AT 'AT+QUIMSLOT?'
+```
+
+## `sim.dual_slot_status`
+
+- Command: `AT+QSIMCFG="dual_slot_status"`
+- Category: SIM
+- Type: query
+- Safety: read-only
+- Timeout: 10 seconds
+- Parser: `campnet.providers.multisim.parse_installed_slots`
+
+Queries dual-slot presence information.
+
+Purpose: Enables switching only when both cards are explicitly detected.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+```bash
+# Queries dual-slot presence information.
+# Enables switching only when both cards are explicitly detected.
+gl_modem -B 1-1.2 AT 'AT+QSIMCFG="dual_slot_status"'
+```
+
+## `sim.readiness`
+
+- Command: `AT+CPIN?`
+- Category: SIM
+- Type: query
+- Safety: read-only
+- Timeout: 10 seconds
+- Parser: `campnet.providers.multisim.sim_ready`
+
+Queries active SIM readiness.
+
+Purpose: Waits for the selected card to initialize before collection.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+```bash
+# Queries active SIM readiness.
+# Waits for the selected card to initialize before collection.
+gl_modem -B 1-1.2 AT 'AT+CPIN?'
+```
+
+## `sim.switch_slot`
+
+- Command: `AT+QUIMSLOT=<slot>`
+- Category: SIM
+- Type: set/configuration
+- Safety: connectivity-impacting
+- Timeout: 30 seconds
+- Parser: none
+
+Selects the active SIM slot.
+
+Purpose: Collects each installed SIM and restores the original slot.
+
+Expected response: OK or an exact modem error; SIM initialization and registration follow asynchronously.
+
+Side effects:
+
+- Interrupts cellular connectivity.
+- Persists the selected slot and requires restoration.
+
+```bash
+# Selects the active SIM slot.
+# Collects each installed SIM and restores the original slot.
+gl_modem -B 1-1.2 AT 'AT+QUIMSLOT=<slot>'
 ```

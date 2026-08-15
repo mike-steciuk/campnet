@@ -8,16 +8,19 @@ materially change.
 
 - Private repository: `https://github.com/mike-steciuk/campnet`
 - Default branch: `main`
-- Active branch: `feature/device-speedtest-at-registry`
-- Latest committed handoff baseline: `c16cea0`
+- Active branch: `feature/multi-sim-surveys`
+- Latest main baseline: merge commit `f16c1ad`
 - Python: 3.11 or newer
 - Survey schema: 1
 - Application version: 0.1.0
 
-The active branch contains device profiles, router/collector speed tests, GNSS
-collection, the AT registry, generated reference, per-carrier signal reporting,
-an interactive historical-survey browser, and tests. The branch is intended to
-be pushed to the private GitHub repository as part of this update.
+Main contains device profiles, speed tests, GNSS collection, the AT registry,
+carrier reporting, and the historical-survey browser. The active multi-SIM
+branch changes manual one-off surveys to omit load tests, adds `--optimize` for
+current-connection speed testing, and implements sequential SIM collection
+with mandatory restoration. The workflow is hardware-neutral behind
+`SIMSlotController`; the GL-X3000 command/parsing implementation is isolated in
+`QuectelATSimSlotController`. Field testing with two active SIMs is pending.
 
 ## Current architecture
 
@@ -145,15 +148,16 @@ Verify the project:
 Run a comprehensive survey from the repository root:
 
 ```powershell
-# Collect detailed scans, GNSS attempts, configuration, and a speed test.
+# Collect detailed scans, GNSS attempts, configuration, and detected SIM slots.
 .\.venv\Scripts\python.exe -m campnet collect `
   --campground "Petoskey State Park" `
   --site "30"
 ```
 
-Use `--no-speed-test` while diagnosing the current failure, `--no-gps` when a
-location attempt is unwanted, or `--profile continuous` for lightweight
-collection without slow scans, GNSS state changes, or speed tests.
+The default one-off profile does not run a load test. Use `--no-gps` when a
+location attempt is unwanted, `--profile continuous` for lightweight
+collection, or `--optimize` to test the current active connection's
+performance. Optimize does not switch SIMs.
 
 Review historical surveys without remembering filenames or parameters:
 
@@ -182,6 +186,17 @@ with warnings, and renders selected surveys using the latest report logic.
 7. Investigate successful `QSCAN` acknowledgements that contain no cell rows;
    record whether this depends on registration, firmware, scan timing, or
    transport behavior instead of assuming a universal cause.
+8. Develop multi-SIM support according to `docs/multi-sim-design.md`. The
+   GL-X3000 is dual-SIM, single-standby, so passive discovery can be shared but
+   registration and aggregation must run per active slot. Generic orchestration
+   supports any number of adapter-reported slots and is mock-tested; the
+   Quectel adapter's live validation awaits a second activated SIM. Speed
+   testing remains a separate optimize-profile action on the current
+   active connection.
+   Read-only validation against the current router was attempted while it was
+   offline and timed out before any AT command executed. Repeat the inventory
+   queries when the router is reachable, then perform live switching only when
+   the second activated SIM is available.
 
 ## Safety rules
 
