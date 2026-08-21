@@ -131,6 +131,15 @@ def test_alternate_registration_failure_still_restores_original() -> None:
 def test_sim_inventory_parsers_are_conservative() -> None:
     assert parse_active_slot("+QUIMSLOT: 2\nOK") == 2
     assert parse_installed_slots('+QSIMCFG: "dual_slot_status",1,1\nOK') == (1, 2)
+    extended = (
+        '+QSIMCFG: "dual_slot_status",2,1,1,'
+        "synthetic-slot-one-metadata,0,"
+        "89000000000000000001,2,0,1,"
+        "synthetic-slot-two-metadata,0,"
+        "89000000000000000002\nOK"
+    )
+    assert parse_installed_slots(extended) == (1, 2)
+    assert parse_installed_slots(extended.replace("89000000000000000002", "0")) == ()
     assert parse_installed_slots("OK") == ()
 
 

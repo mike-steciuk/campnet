@@ -106,9 +106,19 @@ def parse_active_slot(response: str) -> int | None:
 
 def parse_installed_slots(response: str) -> tuple[int, ...]:
     match = re.search(r'\+QSIMCFG:\s*"dual_slot_status"\s*,\s*([01])\s*,\s*([01])', response)
-    if match is None:
+    if match is not None:
+        return tuple(index for index, value in enumerate(match.groups(), start=1) if value == "1")
+
+    # Newer GL.iNet RM520N firmware returns an extended, firmware-specific
+    # record for each slot. Quectel does not publish the individual fields,
+    # so only accept the shape when it explicitly declares two slots and
+    # contains two complete physical-SIM ICCIDs. Anything less remains
+    # unknown and therefore cannot authorize a slot switch.
+    extended = re.search(r'\+QSIMCFG:\s*"dual_slot_status"\s*,\s*2\s*,([^\r\n]+)', response)
+    if extended is None:
         return ()
-    return tuple(index for index, value in enumerate(match.groups(), start=1) if value == "1")
+    iccids = re.findall(r'(?<!\d)89\d{17,18}(?!\d)', extended.group(1))
+    return (1, 2) if len(set(iccids)) == 2 else ()
 
 
 def sim_ready(response: str) -> bool:

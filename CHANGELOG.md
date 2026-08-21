@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Recognize the extended dual-SIM inventory returned by GL-X3000 RM520N firmware,
+  while keeping ambiguous slot responses in the safe unknown state.
 - Fixed multi-SIM parent normalization so shared passive carrier scans remain
   available to reports, including in-memory recovery for already-saved scans.
 - Added an operation-specific one-off preflight with safe cancellation and
