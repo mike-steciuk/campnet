@@ -17,6 +17,19 @@ Install the optional speed-test adapter with:
 python -m pip install -e ".[speedtest]"
 ```
 
+## Private and machine-local files
+
+Do not commit `devices.toml`, live surveys, captures, raw responses, or files
+under `tests/fixtures/private/`. Survey data can contain modem and SIM
+identifiers, cell identifiers, precise coordinates, public IP addresses, and
+personal notes. Copy ignored surveys separately between computers only when
+their history is needed.
+
+Only deliberately redacted captures belong in tracked fixtures.
+`devices.example.toml` is the safe tracked starting point for a local device
+profile. Create a fresh virtual environment on each computer instead of
+copying `.venv`.
+
 ## Router SSH authentication
 
 Use a dedicated SSH key for CampNet. Never place the router's root password,
