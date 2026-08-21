@@ -57,8 +57,10 @@ provider or parser, not changes to the Survey model, analyzers, or reports.
 
 Providers may be unavailable on a particular system. A provider failure must
 be recorded without discarding successful observations from other providers.
-Providers that change modem state, including enabling GNSS or changing radio
-configuration, require explicit user authorization.
+Invoking `collect` authorizes the operations in its selected profile. Before a
+profile changes modem state or may affect connectivity, CampNet must describe
+the planned operations and require an operation-specific confirmation. The
+confirmation defaults to cancellation; `--yes` supports non-interactive use.
 
 ## AT Command Tracking and Documentation
 
@@ -78,6 +80,9 @@ to every modem or firmware.
 
 Safety classifications are read-only, low-risk configuration,
 connectivity-impacting, persistent configuration, destructive, and unknown.
+Classification reflects operational impact rather than command syntax: a
+read-like operation that may interrupt, degrade, or monopolize connectivity is
+connectivity-impacting.
 The executor must require explicit authorization before executing a command
 classified as connectivity-impacting, persistent, destructive, or unknown.
 Configuration operations must be restored when their registry entry requires
@@ -115,6 +120,11 @@ transport failures, malformed responses, and parser failures remain distinct.
 Every shell or AT example has concise comments immediately above it explaining
 what is run, why, important parameters, expected high-level output, and any
 material side effect. Comments must add meaning rather than repeat a command.
+
+Every executable AT operation, including parameterized writes and restoration
+operations, must be defined and rendered through the registry. Planning code
+returns registry identifiers and validated parameters, never independently
+constructed executable AT strings.
 
 To add a command: add and review its registry definition, link its parser,
 add sanitized response fixtures, add or update integrity/parser tests,
@@ -273,7 +283,11 @@ Survey
 -   recommendations
 -   raw_responses
 
-Raw responses must always be retained.
+Raw responses must always be retained. Every provider execution attempt also
+retains all available raw stdout, stderr, exit status, timeout details, and
+transport errors regardless of success. Normalized errors remain separate from
+raw evidence. Sensitive evidence stays in protected survey storage and must be
+redacted before sharing or committing.
 
 Every survey also records provider outcomes, including provider name,
 collection timestamp, raw payloads, and non-fatal errors. The schema must
@@ -309,11 +323,10 @@ Collect when enabled:
 -   Heading
 -   HDOP
 
-Do not automatically enable GNSS unless explicitly requested.
-
-For explicitly requested comprehensive one-off surveys, CampNet may
-temporarily enable GNSS, attempt to obtain a fix, and then restore the prior
-GNSS state. Continuous surveys must not repeatedly enable or disable GNSS.
+A confirmed comprehensive one-off survey may temporarily enable GNSS, attempt
+to obtain a fix, and then restore the prior GNSS state. The preflight must state
+that GNSS may be enabled and describe restoration. Continuous surveys must not
+repeatedly enable or disable GNSS.
 When GNSS is already enabled, a continuous survey makes one location query and
 records an immediately available fix. It does not poll for acquisition, wait
 between attempts, or treat the absence of a current fix as a provider failure.
@@ -498,6 +511,10 @@ Survey schema:
 
 Independent integer version.
 
+Every released schema version remains readable through explicit, tested
+migrations into the current normalized model. Favor additive evolution, and
+never silently rewrite an original survey while reading or migrating it.
+
 ------------------------------------------------------------------------
 
 # Git Workflow
@@ -526,7 +543,6 @@ CHANGELOG should follow Keep a Changelog.
 This document should be treated as the living product specification and
 updated as requirements evolve through field testing.
 
-For the tested hardware baseline, observed firmware behavior, machine-local
-files, migration procedure, and prioritized continuation work, see
-`docs/project-handoff.md`. Those observations are evidence for a specific
+For the tested hardware baseline and observed firmware behavior, see
+`docs/hardware-baseline.md`. Those observations are evidence for a specific
 environment; they do not become universal modem assumptions.

@@ -82,9 +82,12 @@ does not change GNSS state.
 See [CampNet_Development_Spec.md](CampNet_Development_Spec.md) for the living
 product and engineering specification.
 
-See [docs/project-handoff.md](docs/project-handoff.md) when moving development
-to another computer. It records current status, known hardware behavior,
-private local files, setup steps, and immediate next work.
+Accepted engineering constraints are indexed in
+[decisions/README.md](decisions/README.md). Decision records are authoritative;
+GitHub proposal issues are optional when research or discussion would help.
+
+See [docs/hardware-baseline.md](docs/hardware-baseline.md) for the tested router,
+modem, firmware, transport, and environment-specific observations.
 
 Router authentication is intentionally handled outside CampNet. See
 [docs/development.md](docs/development.md) for the key-based OpenWrt SSH setup.

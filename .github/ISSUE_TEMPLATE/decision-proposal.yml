@@ -1,0 +1,56 @@
+name: Decision proposal
+description: Propose and discuss an engineering decision when an issue would help
+title: "[Decision]: "
+labels:
+  - decision/proposed
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues are optional deliberation tools. If the proposal is accepted,
+        create a self-contained record in `decisions/` and link this issue.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem, constraint, or opportunity requires a decision?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What do you propose, and what outcome should it produce?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional—what credible alternatives exist and what are their tradeoffs?
+  - type: textarea
+    id: short-term-impact
+    attributes:
+      label: Short-term impact
+      description: Optional—migration, delivery risk, cost, and immediately affected systems.
+  - type: textarea
+    id: long-term-impact
+    attributes:
+      label: Long-term impact
+      description: Optional—maintenance, scalability, operations, security, and reversibility.
+  - type: input
+    id: supersedes
+    attributes:
+      label: Prior decisions this may replace
+      description: Optional—decision IDs or links.
+      placeholder: DEC-0007, DEC-0012
+  - type: textarea
+    id: decision
+    attributes:
+      label: Final decision
+      description: Leave blank while discussing; fill this in if the proposal is accepted.
+  - type: textarea
+    id: follow-up
+    attributes:
+      label: Consequences and follow-up
+      description: Follow-up work, review dates, success measures, and known tradeoffs.
