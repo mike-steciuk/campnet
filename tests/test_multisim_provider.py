@@ -57,7 +57,7 @@ def test_multi_sim_collects_both_slots_and_restores_original() -> None:
     client = ATClient(transport, retries=0)
     provider = MultiSIMProvider(
         QuectelATSimSlotController(
-            client, registration_attempts=1, sleeper=lambda seconds: None
+            client, registration_attempts=1, sleeper=lambda seconds: None, authorized=True
         ),
         ATProvider(client, commands=(command("network.cell_scan"),)),
         ATProvider(client, commands=(command("network.current"),)),
@@ -92,7 +92,7 @@ def test_single_detected_sim_never_switches() -> None:
     transport = DualSIMTransport(both_installed=False)
     client = ATClient(transport, retries=0)
     provider = MultiSIMProvider(
-        QuectelATSimSlotController(client),
+        QuectelATSimSlotController(client, authorized=True),
         ATProvider(client, commands=(command("network.cell_scan"),)),
         ATProvider(client, commands=(command("network.current"),)),
     )
@@ -110,7 +110,7 @@ def test_alternate_registration_failure_still_restores_original() -> None:
     client = ATClient(transport, retries=0)
     provider = MultiSIMProvider(
         QuectelATSimSlotController(
-            client, registration_attempts=1, sleeper=lambda seconds: None
+            client, registration_attempts=1, sleeper=lambda seconds: None, authorized=True
         ),
         ATProvider(client, commands=(command("network.cell_scan"),)),
         ATProvider(client, commands=(command("network.current"),)),
@@ -130,6 +130,19 @@ def test_sim_inventory_parsers_are_conservative() -> None:
     assert parse_active_slot("+QUIMSLOT: 2\nOK") == 2
     assert parse_installed_slots('+QSIMCFG: "dual_slot_status",1,1\nOK') == (1, 2)
     assert parse_installed_slots("OK") == ()
+
+
+def test_sim_switch_requires_external_authorization() -> None:
+    transport = DualSIMTransport()
+    controller = QuectelATSimSlotController(ATClient(transport, retries=0))
+
+    try:
+        controller.select(2)
+    except PermissionError:
+        pass
+    else:
+        raise AssertionError("SIM switch executed without preflight authorization")
+    assert transport.switches == []
 
 
 class ThreeSlotController:

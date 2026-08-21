@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from campnet.models import JsonValue, ProviderResult, utc_now
+from campnet.normalization import normalize_at_result
 from campnet.providers.base import CollectionContext, DataProvider
 from campnet.sim import SIMSlotController, SIMState
 
@@ -70,22 +71,25 @@ class MultiSIMProvider:
                     _merge_evidence(restored_state, raw, errors)
                     restored = restored_state.ready and restored_state.registered
 
-        return ProviderResult(
-            provider=self.name,
-            collected_at=utc_now(),
-            data={
-                "commands": original.data.get("commands", []),
-                "multi_sim": {
-                    "original_slot": original_slot,
-                    "installed_slots": list(inventory.installed_slots),
-                    "multi_sim_detected": len(inventory.installed_slots) > 1,
-                    "dual_sim_detected": len(inventory.installed_slots) == 2,
-                    "segments": segments,
-                    "restored_original_slot": restored,
+        return normalize_at_result(
+            ProviderResult(
+                provider=self.name,
+                collected_at=utc_now(),
+                data={
+                    "commands": original.data.get("commands", []),
+                    "radio": original.data.get("radio", {}),
+                    "multi_sim": {
+                        "original_slot": original_slot,
+                        "installed_slots": list(inventory.installed_slots),
+                        "multi_sim_detected": len(inventory.installed_slots) > 1,
+                        "dual_sim_detected": len(inventory.installed_slots) == 2,
+                        "segments": segments,
+                        "restored_original_slot": restored,
+                    },
                 },
-            },
-            raw_responses=raw,
-            errors=tuple(errors),
+                raw_responses=raw,
+                errors=tuple(errors),
+            )
         )
 
 

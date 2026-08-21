@@ -384,8 +384,9 @@ A multi-SIM survey uses one parent session and one segment per activated slot.
 It records the original slot, shared passive/GNSS context, active-slot identity
 using redacted or locally safe labels, registration state, raw and normalized
 radio observations, and verified restoration evidence. Slot switching is
-authorized by explicitly starting the manual one-off profile; it interrupts
-connectivity and may persist.
+part of the manual one-off profile, but it may interrupt connectivity and
+persists until restoration. The operation-specific preflight must be confirmed
+before any scan, GNSS state change, or slot switch begins.
 
 The default comprehensive workflow runs slow passive scans once, runs the
 active-SIM radio subset for each usable slot, and restores the original slot.

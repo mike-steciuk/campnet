@@ -28,9 +28,10 @@ Browse saved surveys interactively by location, site, and scan date:
 ```
 
 The equivalent direct command is `.\.venv\Scripts\python.exe -m campnet review`.
-Historical JSON is not rewritten: it is reparsed using the latest reporting
-logic. Carrier comparisons appear only when the stored scan contains usable
-`+QSCAN:` cell rows with PLMN and RSRP measurements.
+Historical schema-1 JSON is not rewritten: the reader derives normalized
+radio observations in memory before reporting. Carrier comparisons appear
+only when the stored scan contains usable `+QSCAN:` cell rows with PLMN and
+RSRP measurements.
 
 Replay the checked-in modem fixture through the AT provider:
 
@@ -60,13 +61,16 @@ survey, including raw responses, beneath the ignored `surveys/` directory.
 The default `one-off` profile includes slow `COPS` and `QSCAN` discovery,
 temporary GNSS enablement, and automatic sequential collection of both SIMs
 when the modem explicitly reports both slots populated. CampNet restores GNSS
-and the originally selected SIM afterward. It does not run a speed test.
+and the originally selected SIM afterward. Before contacting the modem,
+CampNet describes these connectivity-affecting operations and asks for
+confirmation; use `--yes` for an intentional non-interactive run. The one-off
+profile does not run a speed test.
 
 Use `--profile continuous` for fast sampling without slow discovery, GNSS
 state changes, SIM switching, or load tests. If GNSS is already enabled,
-continuous mode makes one location query but never enables or disables it. Use `--optimize` when
-diagnosing an existing active connection; that profile captures active radio
-and configuration data and runs the configured speed test. Add
+continuous mode makes one location query but never enables or disables it.
+Use `--optimize` when diagnosing an existing active connection; that profile
+captures active radio and configuration data and runs the configured speed test. Add
 `--no-speed-test` to optimize without load, or `--no-gps` to omit GNSS from a
 one-off survey.
 

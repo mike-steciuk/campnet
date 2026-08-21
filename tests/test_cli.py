@@ -1,6 +1,15 @@
 from __future__ import annotations
 
-from campnet.cli import _commands_for_profile, _gnss_policy, _profile_uses_speedtest, build_parser
+from unittest.mock import patch
+
+from campnet.cli import (
+    _commands_for_profile,
+    _confirm_preflight,
+    _gnss_policy,
+    _preflight_warnings,
+    _profile_uses_speedtest,
+    build_parser,
+)
 from campnet.providers import CONTINUOUS_COMMANDS, ONE_OFF_COMMANDS, OPTIMIZE_COMMANDS
 
 
@@ -28,3 +37,22 @@ def test_gnss_profile_policy_preserves_continuous_receiver_state() -> None:
     assert _gnss_policy("continuous", no_gps=False) == (False, 1, False)
     assert _gnss_policy("optimize", no_gps=False) is None
     assert _gnss_policy("continuous", no_gps=True) is None
+
+
+def test_live_one_off_preflight_describes_every_planned_effect() -> None:
+    warnings = _preflight_warnings("one-off", no_gps=False, live_hardware=True)
+
+    assert any("operator scan" in warning for warning in warnings)
+    assert any("SIM slots" in warning for warning in warnings)
+    assert any("GNSS" in warning for warning in warnings)
+    assert _preflight_warnings("continuous", no_gps=False, live_hardware=True) == ()
+    assert _preflight_warnings("one-off", no_gps=False, live_hardware=False) == ()
+
+
+def test_yes_flag_is_non_interactive_confirmation() -> None:
+    assert _confirm_preflight(("temporarily change state",), assume_yes=True)
+
+
+def test_preflight_defaults_to_cancellation() -> None:
+    with patch("builtins.input", return_value=""):
+        assert not _confirm_preflight(("temporarily change state",), assume_yes=False)

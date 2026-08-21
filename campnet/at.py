@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from campnet.transports import ATTransport
+from campnet.execution import ExecutionFailure
+from campnet.transports import ATTransport, ATTransportResult
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,6 +14,7 @@ class ATAttempt:
     attempt: int
     response: str | None = None
     error: str | None = None
+    raw_evidence: dict[str, str] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,17 +57,32 @@ class ATClient:
             raise ValueError("timeout must be positive")
         for attempt_number in range(1, self._retries + 2):
             try:
-                response = self._transport.exchange(normalized, timeout)
+                outcome = self._transport.exchange(normalized, timeout)
+                response = outcome.response if isinstance(outcome, ATTransportResult) else outcome
+                raw_evidence = (
+                    outcome.raw_evidence if isinstance(outcome, ATTransportResult) else None
+                )
                 attempts.append(
-                    ATAttempt(command=normalized, attempt=attempt_number, response=response)
+                    ATAttempt(
+                        command=normalized,
+                        attempt=attempt_number,
+                        response=response,
+                        raw_evidence=raw_evidence,
+                    )
                 )
                 return ATExchange(command=normalized, attempts=tuple(attempts))
             except Exception as error:  # Transport implementations define concrete failures.
+                raw_evidence = (
+                    error.evidence.raw_responses("transport")
+                    if isinstance(error, ExecutionFailure)
+                    else None
+                )
                 attempts.append(
                     ATAttempt(
                         command=normalized,
                         attempt=attempt_number,
                         error=f"{type(error).__name__}: {error}",
+                        raw_evidence=raw_evidence,
                     )
                 )
         return ATExchange(command=normalized, attempts=tuple(attempts))

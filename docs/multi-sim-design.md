@@ -104,7 +104,7 @@ salted identifier.
 1. Record the original active slot, SIM readiness, registration, APN/profile
    context, and router auto-switch policy.
 2. Collect shared location and an initial passive carrier scan.
-3. For each authorized slot:
+3. After the one-off preflight is confirmed, for each detected slot:
    1. Select it only if it is not already active.
    2. Wait for SIM readiness and registration with bounded timeouts, recording
       every transition.
@@ -119,6 +119,8 @@ salted identifier.
 ## Recommended defaults
 
 - Run one initial `COPS`/`QSCAN` passive baseline.
+- Describe the long scan, GNSS state handling, and possible SIM switching in a
+  single preflight; default to cancellation and support `--yes` for automation.
 - Run one full active-SIM subset per selected installed slot.
 - Offer `--scan-each-sim` to repeat slow passive scans after each switch.
 - Restore the original slot unless the user explicitly chooses another final

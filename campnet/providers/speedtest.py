@@ -8,10 +8,11 @@ import shlex
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol, cast
 
+from campnet.execution import ExecutionEvidence, ExecutionFailure, timeout_text
 from campnet.models import JsonValue, ProviderResult, utc_now
 from campnet.providers.base import CollectionContext
 
@@ -23,7 +24,15 @@ class SpeedTestAdapter(Protocol):
     @property
     def execution_scope(self) -> str: ...
 
-    def run(self, timeout_seconds: float) -> tuple[dict[str, JsonValue], str]: ...
+    def run(self, timeout_seconds: float) -> SpeedTestRun: ...
+
+
+@dataclass(frozen=True, slots=True)
+class SpeedTestRun:
+    normalized: dict[str, JsonValue]
+    raw: str
+    evidence: ExecutionEvidence
+    additional_raw: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,7 +48,7 @@ class CommandSpeedTestAdapter:
     def execution_scope(self) -> str:
         return "collector_host"
 
-    def run(self, timeout_seconds: float) -> tuple[dict[str, JsonValue], str]:
+    def run(self, timeout_seconds: float) -> SpeedTestRun:
         arguments = (
             [
                 str(self.executable),
@@ -59,21 +68,39 @@ class CommandSpeedTestAdapter:
                 check=False,
             )
         except subprocess.TimeoutExpired as error:
-            raise TimeoutError("speed test timed out") from error
+            raise ExecutionFailure(
+                "speed test timed out",
+                ExecutionEvidence(
+                    stdout=timeout_text(error.stdout),
+                    stderr=timeout_text(error.stderr),
+                    timed_out=True,
+                ),
+            ) from error
         if completed.returncode != 0:
             detail = completed.stderr.strip() or completed.stdout.strip() or "unknown error"
-            raise RuntimeError(f"speed test failed: {detail}")
+            raise ExecutionFailure(
+                f"speed test failed: {detail}",
+                ExecutionEvidence(
+                    stdout=completed.stdout,
+                    stderr=completed.stderr,
+                    exit_code=completed.returncode,
+                ),
+            )
         raw = completed.stdout.strip()
-        value: object = json.loads(raw)
+        evidence = ExecutionEvidence(stdout=completed.stdout, stderr=completed.stderr, exit_code=0)
+        try:
+            value: object = json.loads(raw)
+        except json.JSONDecodeError as error:
+            raise ExecutionFailure("speed-test result is not valid JSON", evidence) from error
         if not isinstance(value, dict):
-            raise ValueError("speed-test result must be a JSON object")
+            raise ExecutionFailure("speed-test result must be a JSON object", evidence)
         document = cast(dict[str, JsonValue], value)
         normalized = (
             _normalize_ookla(document)
             if self.official_ookla
             else _normalize_speedtest_cli(document)
         )
-        return normalized, raw
+        return SpeedTestRun(normalized, raw, evidence)
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,7 +119,7 @@ class SSHSpeedTestAdapter:
     def execution_scope(self) -> str:
         return "router"
 
-    def run(self, timeout_seconds: float) -> tuple[dict[str, JsonValue], str]:
+    def run(self, timeout_seconds: float) -> SpeedTestRun:
         target = f"{self.user}@{self.host}"
         if not re.fullmatch(r"[A-Za-z0-9_.:@-]+", target) or target.startswith("-"):
             raise ValueError("unsafe SSH speed-test target")
@@ -100,28 +127,42 @@ class SSHSpeedTestAdapter:
             r"/[A-Za-z0-9_./-]+", self.executable
         ):
             raise ValueError("unsafe router speed-test executable")
+        additional_raw: dict[str, str] = {}
         if self.expected_interface is not None:
             if not re.fullmatch(r"[A-Za-z0-9_.-]+", self.expected_interface):
                 raise ValueError("unsafe expected interface")
-            route = _run_ssh(
+            route_evidence = _run_ssh(
                 self.ssh_executable,
                 target,
                 "ip -4 route get 1.1.1.1",
                 min(timeout_seconds, 15),
             )
-            match = re.search(r"\bdev\s+(\S+)", route)
+            additional_raw.update(route_evidence.raw_responses("route-check"))
+            match = re.search(r"\bdev\s+(\S+)", route_evidence.stdout)
             actual_interface = match.group(1) if match else None
             if actual_interface != self.expected_interface:
-                raise RuntimeError(
+                raise ExecutionFailure(
                     f"router default route uses {actual_interface or 'an unknown interface'}, "
-                    f"expected {self.expected_interface}"
+                    f"expected {self.expected_interface}",
+                    route_evidence,
                 )
         command = " ".join(shlex.quote(part) for part in (self.executable, "--json", "--secure"))
-        raw = _run_ssh(self.ssh_executable, target, command, timeout_seconds).strip()
-        value: object = json.loads(raw)
+        evidence = _run_ssh(self.ssh_executable, target, command, timeout_seconds)
+        raw = evidence.stdout.strip()
+        try:
+            value: object = json.loads(raw)
+        except json.JSONDecodeError as error:
+            raise ExecutionFailure(
+                "router speed-test result is not valid JSON", evidence
+            ) from error
         if not isinstance(value, dict):
-            raise ValueError("router speed-test result must be a JSON object")
-        return _normalize_speedtest_cli(cast(dict[str, JsonValue], value)), raw
+            raise ExecutionFailure("router speed-test result must be a JSON object", evidence)
+        return SpeedTestRun(
+            _normalize_speedtest_cli(cast(dict[str, JsonValue], value)),
+            raw,
+            evidence,
+            additional_raw,
+        )
 
 
 class SpeedTestProvider:
@@ -153,9 +194,13 @@ class SpeedTestProvider:
         if self._fallback_adapter is not None:
             adapters.append(self._fallback_adapter)
         failures: list[str] = []
+        raw_failures: dict[str, str] = {}
         for index, candidate in enumerate(adapters):
             try:
-                data, raw = candidate.run(self._timeout_seconds)
+                run = candidate.run(self._timeout_seconds)
+                raw_attempt = run.evidence.raw_responses(
+                    f"attempt-{index + 1}-{candidate.execution_scope}"
+                )
                 return ProviderResult(
                     provider=self.name,
                     collected_at=utc_now(),
@@ -164,16 +209,28 @@ class SpeedTestProvider:
                         "execution_scope": candidate.execution_scope,
                         "fallback_used": index > 0,
                         "fallback_reason": "; ".join(failures) if failures else None,
-                        **data,
+                        **run.normalized,
                     },
-                    raw_responses={"result.json": raw},
+                    raw_responses={
+                        **raw_failures,
+                        **run.additional_raw,
+                        **raw_attempt,
+                        "result.json": run.raw,
+                    },
                 )
             except Exception as error:
                 failures.append(f"{candidate.execution_scope}: {type(error).__name__}: {error}")
+                if isinstance(error, ExecutionFailure):
+                    raw_failures.update(
+                        error.evidence.raw_responses(
+                            f"attempt-{index + 1}-{candidate.execution_scope}"
+                        )
+                    )
         return ProviderResult(
             provider=self.name,
             collected_at=utc_now(),
             data={"tool": adapter.name},
+            raw_responses=raw_failures,
             errors=tuple(failures),
         )
 
@@ -215,7 +272,9 @@ def _is_official_ookla(executable: Path) -> bool:
     return "ookla" in (completed.stdout + completed.stderr).lower()
 
 
-def _run_ssh(executable: str, target: str, remote_command: str, timeout_seconds: float) -> str:
+def _run_ssh(
+    executable: str, target: str, remote_command: str, timeout_seconds: float
+) -> ExecutionEvidence:
     arguments = [
         executable,
         "-o",
@@ -236,11 +295,23 @@ def _run_ssh(executable: str, target: str, remote_command: str, timeout_seconds:
             check=False,
         )
     except subprocess.TimeoutExpired as error:
-        raise TimeoutError("router speed test timed out") from error
+        raise ExecutionFailure(
+            "router speed test timed out",
+            ExecutionEvidence(
+                stdout=timeout_text(error.stdout),
+                stderr=timeout_text(error.stderr),
+                timed_out=True,
+            ),
+        ) from error
+    evidence = ExecutionEvidence(
+        stdout=completed.stdout,
+        stderr=completed.stderr,
+        exit_code=completed.returncode,
+    )
     if completed.returncode != 0:
         detail = completed.stderr.strip() or completed.stdout.strip() or "unknown SSH error"
-        raise RuntimeError(detail)
-    return completed.stdout
+        raise ExecutionFailure(detail, evidence)
+    return evidence
 
 
 def _normalize_ookla(value: dict[str, JsonValue]) -> dict[str, JsonValue]:

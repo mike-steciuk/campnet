@@ -42,9 +42,9 @@ private key, or key passphrase.
   failure. Preserve per-run evidence and do not generalize either outcome.
 - Provider failures are non-fatal; a failed speed test did not discard modem,
   scan, GNSS, or other successful observations.
-- Historical surveys are reparsed with the current code when displayed. A
-  stored survey with usable `+QSCAN:` rows can produce a current carrier-signal
-  comparison without changing the original JSON or rescanning.
+- The schema-1 reader can derive normalized observations from a historical
+  survey with usable `+QSCAN:` rows without changing the original JSON or
+  rescanning.
 - One Port Sanilac Marina scan from 2026-08-15 recorded `AT+QSCAN=1` but
   received only `OK`, with no `+QSCAN:` rows. It cannot provide historical
   per-carrier signal strength. An `OK` acknowledgement does not prove that the

@@ -7,7 +7,10 @@ import shlex
 import subprocess
 from collections.abc import Callable
 
-CommandRunner = Callable[[list[str], float], str]
+from campnet.execution import ExecutionEvidence, ExecutionFailure, timeout_text
+from campnet.transports.base import ATTransportResult
+
+CommandRunner = Callable[[list[str], float], str | ATTransportResult]
 _SAFE_TARGET = re.compile(r"^[A-Za-z0-9_.:@-]+$")
 _SAFE_BUS = re.compile(r"^[A-Za-z0-9_.:-]+$")
 
@@ -34,7 +37,7 @@ class SSHATTransport:
         self._ssh_executable = ssh_executable
         self._runner = runner or _run_command
 
-    def exchange(self, command: str, timeout_seconds: float) -> str:
+    def exchange(self, command: str, timeout_seconds: float) -> str | ATTransportResult:
         connect_timeout = max(1, min(round(timeout_seconds), 30))
         modem_arguments = ["/usr/bin/gl_modem", "-B", self._modem_bus]
         if timeout_seconds > 30:
@@ -56,7 +59,7 @@ class SSHATTransport:
         return self._runner(arguments, timeout_seconds + 2)
 
 
-def _run_command(arguments: list[str], timeout_seconds: float) -> str:
+def _run_command(arguments: list[str], timeout_seconds: float) -> ATTransportResult:
     try:
         completed = subprocess.run(
             arguments,
@@ -66,10 +69,29 @@ def _run_command(arguments: list[str], timeout_seconds: float) -> str:
             check=False,
         )
     except subprocess.TimeoutExpired as error:
-        raise TimeoutError("SSH AT command timed out") from error
+        raise ExecutionFailure(
+            "SSH AT command timed out",
+            ExecutionEvidence(
+                stdout=timeout_text(error.stdout),
+                stderr=timeout_text(error.stderr),
+                timed_out=True,
+            ),
+        ) from error
     except FileNotFoundError as error:
         raise RuntimeError("OpenSSH client was not found on PATH") from error
     if completed.returncode != 0:
         detail = completed.stderr.strip() or completed.stdout.strip() or "unknown SSH error"
-        raise ConnectionError(detail)
-    return completed.stdout
+        raise ExecutionFailure(
+            detail,
+            ExecutionEvidence(
+                stdout=completed.stdout,
+                stderr=completed.stderr,
+                exit_code=completed.returncode,
+            ),
+        )
+    evidence = ExecutionEvidence(
+        stdout=completed.stdout,
+        stderr=completed.stderr,
+        exit_code=completed.returncode,
+    )
+    return ATTransportResult(completed.stdout, evidence.raw_responses("ssh"))

@@ -17,7 +17,7 @@ from campnet.providers.base import CollectionContext
 
 
 def test_registry_identifiers_are_unique_and_metadata_is_complete() -> None:
-    assert len(COMMAND_REGISTRY) == 22
+    assert len(COMMAND_REGISTRY) == 28
     assert len(COMMAND_REGISTRY) == len(set(COMMAND_REGISTRY))
     for identifier, item in COMMAND_REGISTRY.items():
         assert identifier == item.identifier
@@ -29,6 +29,10 @@ def test_registry_identifiers_are_unique_and_metadata_is_complete() -> None:
 
 def test_every_provider_command_comes_from_registry() -> None:
     assert all(item is COMMAND_REGISTRY[item.identifier] for item in ONE_OFF_COMMANDS)
+
+
+def test_operator_scan_is_connectivity_impacting() -> None:
+    assert COMMAND_REGISTRY["network.operator_scan"].safety is Safety.CONNECTIVITY_IMPACTING
 
 
 def test_template_rendering_rejects_injection_and_redacts_sensitive_values() -> None:

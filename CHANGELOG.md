@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Added an operation-specific one-off preflight with safe cancellation and
+  `--yes` automation support before long scans, GNSS changes, or SIM switching.
+- Moved Quectel parsing to collection/schema-read normalization so reports
+  consume canonical structured radio observations while raw evidence remains
+  available.
+- Routed future configuration restoration through parameterized AT registry
+  operations and classified long operator scans by connectivity impact.
+- Preserved structured stdout, stderr, exit status, and timeout evidence from
+  failed speed-test and SSH AT executions.
 - Separate generic multi-SIM orchestration from vendor-specific slot control
   and Quectel response parsing, with an extension contract for new devices.
 
@@ -23,8 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   and reverse-chronological scan date, plus a PowerShell launcher.
 - Added ranked per-carrier signal reporting from passive visible-cell scans,
   including quality, detected-cell counts, and explicit coverage caveats.
-- Updated roadmap, setup guidance, and durable handoff context for moving
-  development to another computer.
+- Replaced transient handoff state with durable setup and tested-hardware
+  documentation.
 - Added an authoritative AT command registry, typed validation and error
   records, safety guards, generated reference documentation, and registry
   integrity tests.

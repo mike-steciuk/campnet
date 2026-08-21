@@ -21,11 +21,13 @@ class QuectelATSimSlotController:
         registration_attempts: int = 12,
         registration_interval_seconds: float = 10.0,
         sleeper: Callable[[float], None] = time.sleep,
+        authorized: bool = False,
     ) -> None:
         self._client = client
         self._registration_attempts = registration_attempts
         self._registration_interval_seconds = registration_interval_seconds
         self._sleeper = sleeper
+        self._authorized = authorized
 
     def inventory(self) -> SIMInventory:
         raw: dict[str, str] = {}
@@ -48,7 +50,7 @@ class QuectelATSimSlotController:
         raw: dict[str, str] = {}
         errors: list[str] = []
         definition = command("sim.switch_slot")
-        require_authorization(definition, authorized=True)
+        require_authorization(definition, authorized=self._authorized)
         switched = self._client.execute(
             definition.render(slot=str(slot)),
             timeout_seconds=definition.execution.recommended_timeout_seconds,
@@ -125,6 +127,8 @@ def _record_exchange(
         key = f"{prefix}:{exchange.command}#{attempt.attempt}"
         if attempt.response is not None:
             raw[key] = attempt.response
+        if attempt.raw_evidence is not None:
+            raw.update({f"{key}:{name}": value for name, value in attempt.raw_evidence.items()})
         if attempt.error is not None:
             errors.append(f"{key}: {attempt.error}")
 

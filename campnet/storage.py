@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from campnet.models import JsonValue, Survey
+from campnet.normalization import normalize_survey
 
 
 def save_survey(survey: Survey, path: Path) -> Path:
@@ -23,4 +24,4 @@ def load_survey(path: Path) -> Survey:
     value: JsonValue = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
         raise ValueError("survey document must contain a JSON object")
-    return Survey.from_dict(value)
+    return normalize_survey(Survey.from_dict(value))

@@ -5,8 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from campnet.models import ProviderResult, Survey
-from campnet.parsers import parse_quectel_snapshot
-from campnet.radio import RadioCell, RadioSnapshot, VisibleCell
+from campnet.radio import RadioCell, RadioSnapshot, VisibleCell, radio_snapshot_from_dict
 
 _CARRIERS = {
     "310260": "T-Mobile",
@@ -28,7 +27,7 @@ def format_survey(survey: Survey) -> str:
     if at_result is not None:
         lines.extend(
             _radio_lines(
-                parse_quectel_snapshot(at_result.raw_responses),
+                radio_snapshot_from_dict(at_result.data.get("radio")),
                 has_speedtest=speedtest_result is not None and speedtest_result.succeeded,
             )
         )
@@ -282,7 +281,7 @@ def _multi_sim_lines(result: ProviderResult) -> list[str]:
         if isinstance(nested, dict):
             try:
                 nested_result = ProviderResult.from_dict(nested)
-                snapshot = parse_quectel_snapshot(nested_result.raw_responses)
+                snapshot = radio_snapshot_from_dict(nested_result.data.get("radio"))
             except ValueError:
                 snapshot = RadioSnapshot()
             plmns = {network.plmn for network in snapshot.networks if network.plmn}

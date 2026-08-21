@@ -106,6 +106,8 @@ def _record(
         key = f"{exchange.command}#{suffix}"
         if attempt.response is not None:
             raw[key] = attempt.response
+        if attempt.raw_evidence is not None:
+            raw.update({f"{key}:{name}": value for name, value in attempt.raw_evidence.items()})
         if attempt.error is not None:
             errors.append(f"{key}: {attempt.error}")
 
