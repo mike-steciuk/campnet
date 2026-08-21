@@ -6,17 +6,28 @@ from dataclasses import replace
 
 from campnet.models import JsonValue, ProviderResult, Survey
 from campnet.parsers import parse_quectel_snapshot
-from campnet.radio import radio_snapshot_to_dict
+from campnet.radio import (
+    merge_shared_and_active_radio,
+    radio_snapshot_from_dict,
+    radio_snapshot_to_dict,
+)
 
 
 def normalize_at_result(result: ProviderResult) -> ProviderResult:
     if result.provider != "at":
         return result
     data = dict(result.data)
+    parsed_radio = parse_quectel_snapshot(result.raw_responses)
     if "radio" not in data:
-        data["radio"] = radio_snapshot_to_dict(parse_quectel_snapshot(result.raw_responses))
+        data["radio"] = radio_snapshot_to_dict(parsed_radio)
     multi_sim = data.get("multi_sim")
     if isinstance(multi_sim, dict):
+        data["radio"] = radio_snapshot_to_dict(
+            merge_shared_and_active_radio(
+                parsed_radio,
+                radio_snapshot_from_dict(data.get("radio")),
+            )
+        )
         normalized_multi_sim = dict(multi_sim)
         segments = multi_sim.get("segments")
         if isinstance(segments, list):

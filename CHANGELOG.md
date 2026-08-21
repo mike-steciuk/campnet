@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Fixed multi-SIM parent normalization so shared passive carrier scans remain
+  available to reports, including in-memory recovery for already-saved scans.
 - Added an operation-specific one-off preflight with safe cancellation and
   `--yes` automation support before long scans, GNSS changes, or SIM switching.
 - Moved Quectel parsing to collection/schema-read normalization so reports

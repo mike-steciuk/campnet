@@ -86,6 +86,8 @@ def test_multi_sim_collects_both_slots_and_restores_original() -> None:
     assert "Original restored:   yes" in report
     assert "SIM slot 1 | registered | AT&T (310410)" in report
     assert "SIM slot 2 | registered | T-Mobile (310260)" in report
+    assert "Signal by carrier" in report
+    assert "1. AT&T: LTE BAND 2" in report
 
 
 def test_single_detected_sim_never_switches() -> None:

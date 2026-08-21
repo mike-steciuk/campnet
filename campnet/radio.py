@@ -92,6 +92,23 @@ class RadioSnapshot:
     modem_preferences: tuple[ModemPreference, ...] = ()
 
 
+def merge_shared_and_active_radio(
+    shared: RadioSnapshot, active: RadioSnapshot
+) -> RadioSnapshot:
+    """Combine passive environment observations with active-connection data."""
+
+    return RadioSnapshot(
+        modem=active.modem or shared.modem,
+        networks=active.networks or shared.networks,
+        serving_cells=active.serving_cells or shared.serving_cells,
+        neighbor_cells=active.neighbor_cells or shared.neighbor_cells,
+        carrier_components=active.carrier_components or shared.carrier_components,
+        operators=shared.operators or active.operators,
+        visible_cells=shared.visible_cells or active.visible_cells,
+        modem_preferences=active.modem_preferences or shared.modem_preferences,
+    )
+
+
 def radio_snapshot_to_dict(snapshot: RadioSnapshot) -> dict[str, JsonValue]:
     document: object = json.loads(json.dumps(asdict(snapshot)))
     if not isinstance(document, dict):

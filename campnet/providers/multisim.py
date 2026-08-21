@@ -5,6 +5,11 @@ from __future__ import annotations
 from campnet.models import JsonValue, ProviderResult, utc_now
 from campnet.normalization import normalize_at_result
 from campnet.providers.base import CollectionContext, DataProvider
+from campnet.radio import (
+    merge_shared_and_active_radio,
+    radio_snapshot_from_dict,
+    radio_snapshot_to_dict,
+)
 from campnet.sim import SIMSlotController, SIMState
 
 
@@ -41,6 +46,10 @@ class MultiSIMProvider:
         raw.update(original.raw_responses)
         errors.extend(original.errors)
         segments: list[JsonValue] = [_segment(original_slot, original_state, original)]
+        parent_radio = merge_shared_and_active_radio(
+            radio_snapshot_from_dict(shared.data.get("radio")),
+            radio_snapshot_from_dict(original.data.get("radio")),
+        )
         restored: bool | None = None
 
         other_slots = tuple(
@@ -77,7 +86,7 @@ class MultiSIMProvider:
                 collected_at=utc_now(),
                 data={
                     "commands": original.data.get("commands", []),
-                    "radio": original.data.get("radio", {}),
+                    "radio": radio_snapshot_to_dict(parent_radio),
                     "multi_sim": {
                         "original_slot": original_slot,
                         "installed_slots": list(inventory.installed_slots),
