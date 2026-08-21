@@ -58,3 +58,26 @@ def test_continuous_gnss_does_not_enable_disabled_receiver() -> None:
     assert transport.commands == ["AT+QGPS?"]
     assert result.data["location"] == {}
     assert "does not change modem state" in result.errors[0]
+
+
+def test_continuous_gnss_reads_existing_fix_once_without_state_change() -> None:
+    transport = GNSSSequenceTransport()
+    transport.responses["AT+QGPS?"].append("+QGPS: 1\nOK\n")
+    transport.responses["AT+QGPSLOC=2"].append(
+        "+QGPSLOC: 120000.0,42.123,-83.456,0.8,250.0,3,180.0,1.2,0.6,050826,12\nOK\n"
+    )
+    provider = GNSSProvider(
+        ATClient(transport, retries=0),
+        enable_if_needed=False,
+        fix_attempts=1,
+        report_unavailable_as_error=False,
+    )
+
+    result = provider.collect(CollectionContext(metadata=SurveyMetadata()))
+
+    assert result.succeeded
+    assert transport.commands == ["AT+QGPS?", "AT+QGPSLOC=2"]
+    location = result.data["location"]
+    assert isinstance(location, dict)
+    assert location["latitude"] == 42.123
+    assert result.data["temporarily_enabled"] is False

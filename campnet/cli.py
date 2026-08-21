@@ -7,15 +7,21 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from campnet.at import ATClient
+from campnet.at_registry import ATCommand, Safety
 from campnet.collector import SurveyCollector
 from campnet.devices import DeviceProfile, load_device_profiles
 from campnet.models import Survey, SurveyMetadata
 from campnet.providers import (
     CONTINUOUS_COMMANDS,
     ONE_OFF_COMMANDS,
+    OPTIMIZE_COMMANDS,
+    PASSIVE_SCAN_COMMANDS,
+    SIM_SPECIFIC_COMMANDS,
     ATProvider,
     DataProvider,
     GNSSProvider,
+    MultiSIMProvider,
+    QuectelATSimSlotController,
     SpeedTestProvider,
     SSHSpeedTestAdapter,
     SystemProvider,
@@ -48,11 +54,22 @@ def build_parser() -> argparse.ArgumentParser:
     collect.add_argument("--ssh-host", help="collect live AT data through a GL.iNet router")
     collect.add_argument("--ssh-user")
     collect.add_argument("--modem-bus")
-    collect.add_argument(
+    profile_options = collect.add_mutually_exclusive_group()
+    profile_options.add_argument(
         "--profile",
-        choices=("one-off", "continuous"),
+        choices=("one-off", "continuous", "optimize"),
         default="one-off",
-        help="one-off includes slow scans; continuous keeps collection lightweight",
+        help=(
+            "one-off includes GPS, slow scans, and detected SIM slots; "
+            "continuous is lightweight; optimize adds a speed test"
+        ),
+    )
+    profile_options.add_argument(
+        "--optimize",
+        dest="profile",
+        action="store_const",
+        const="optimize",
+        help="optimize the current active connection and run a speed test",
     )
     collect.add_argument(
         "--no-gps",
@@ -62,7 +79,12 @@ def build_parser() -> argparse.ArgumentParser:
     collect.add_argument(
         "--no-speed-test",
         action="store_true",
-        help="skip the data-intensive speed test during a one-off survey",
+        help="skip the data-intensive speed test during an optimize survey",
+    )
+    collect.add_argument(
+        "--yes",
+        action="store_true",
+        help="confirm planned modem state changes and connectivity-impacting operations",
     )
 
     show = commands.add_parser("show", help="display a saved survey")
@@ -88,6 +110,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         ssh_host = args.ssh_host or (device.ssh_host if device else None)
         ssh_user = args.ssh_user or (device.ssh_user if device else "root")
         modem_bus = args.modem_bus or (device.modem_bus if device else "1-1.2")
+        warnings = _preflight_warnings(
+            args.profile,
+            no_gps=args.no_gps,
+            live_hardware=ssh_host is not None,
+        )
+        preflight_confirmed = not warnings
+        if warnings:
+            preflight_confirmed = _confirm_preflight(warnings, assume_yes=args.yes)
+            if not preflight_confirmed:
+                print("Collection cancelled before any modem operation.")
+                return 2
+        authorized_ids = _authorized_command_ids(commands=_commands_for_profile(args.profile))
         metadata = SurveyMetadata(
             device_id=device.device_id if device else None,
             campground=args.campground,
@@ -97,10 +131,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             antenna_configuration=args.antenna_configuration,
         )
         providers: list[DataProvider] = [SystemProvider()]
-        commands = ONE_OFF_COMMANDS if args.profile == "one-off" else CONTINUOUS_COMMANDS
+        commands = _commands_for_profile(args.profile)
         if args.at_fixture:
             fixture_transport = ReplayTransport.from_json(args.at_fixture)
-            providers.append(ATProvider(ATClient(fixture_transport), commands=commands))
+            providers.append(
+                ATProvider(
+                    ATClient(fixture_transport),
+                    commands=commands,
+                    authorized_command_ids=authorized_ids,
+                )
+            )
         if ssh_host:
             ssh_transport = SSHATTransport(
                 ssh_host,
@@ -108,10 +148,38 @@ def main(argv: Sequence[str] | None = None) -> int:
                 modem_bus=modem_bus,
             )
             client = ATClient(ssh_transport)
-            providers.append(ATProvider(client, commands=commands))
-            if not args.no_gps:
-                providers.append(GNSSProvider(client, enable_if_needed=args.profile == "one-off"))
-        if args.profile == "one-off" and not args.no_speed_test:
+            if args.profile == "one-off":
+                providers.append(
+                    MultiSIMProvider(
+                        QuectelATSimSlotController(client, authorized=preflight_confirmed),
+                        ATProvider(
+                            client,
+                            commands=PASSIVE_SCAN_COMMANDS,
+                            authorized_command_ids=authorized_ids,
+                        ),
+                        ATProvider(client, commands=SIM_SPECIFIC_COMMANDS),
+                    )
+                )
+            else:
+                providers.append(
+                    ATProvider(
+                        client,
+                        commands=commands,
+                        authorized_command_ids=authorized_ids,
+                    )
+                )
+            gnss_policy = _gnss_policy(args.profile, no_gps=args.no_gps)
+            if gnss_policy is not None:
+                enable_if_needed, fix_attempts, report_unavailable = gnss_policy
+                providers.append(
+                    GNSSProvider(
+                        client,
+                        enable_if_needed=enable_if_needed,
+                        fix_attempts=fix_attempts,
+                        report_unavailable_as_error=report_unavailable,
+                    )
+                )
+        if _profile_uses_speedtest(args.profile, no_speed_test=args.no_speed_test):
             providers.append(_speedtest_provider(device))
         print(f"Collecting {args.profile} survey; this may take several minutes...")
         survey = SurveyCollector(providers).collect(metadata)
@@ -131,6 +199,73 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _default_output(survey: Survey) -> Path:
     timestamp = survey.timestamp.strftime("%Y%m%dT%H%M%SZ")
     return Path("surveys") / f"survey-{timestamp}.json"
+
+
+def _commands_for_profile(profile: str) -> tuple[ATCommand, ...]:
+    commands = {
+        "one-off": ONE_OFF_COMMANDS,
+        "continuous": CONTINUOUS_COMMANDS,
+        "optimize": OPTIMIZE_COMMANDS,
+    }
+    try:
+        return commands[profile]
+    except KeyError as error:
+        raise ValueError(f"unknown collection profile: {profile}") from error
+
+
+def _profile_uses_speedtest(profile: str, *, no_speed_test: bool) -> bool:
+    return profile == "optimize" and not no_speed_test
+
+
+def _authorized_command_ids(*, commands: tuple[ATCommand, ...]) -> frozenset[str]:
+    guarded = {
+        Safety.CONNECTIVITY_IMPACTING,
+        Safety.PERSISTENT,
+        Safety.DESTRUCTIVE,
+        Safety.UNKNOWN,
+    }
+    return frozenset(item.identifier for item in commands if item.safety in guarded)
+
+
+def _preflight_warnings(
+    profile: str, *, no_gps: bool, live_hardware: bool
+) -> tuple[str, ...]:
+    if not live_hardware or profile != "one-off":
+        return ()
+    warnings = [
+        "run a long operator scan that may temporarily interrupt or degrade connectivity",
+        "switch among detected SIM slots, interrupting cellular service, "
+        "then restore the original slot",
+    ]
+    if not no_gps:
+        warnings.append(
+            "temporarily enable GNSS when needed, then restore its previous disabled state"
+        )
+    return tuple(warnings)
+
+
+def _confirm_preflight(warnings: tuple[str, ...], *, assume_yes: bool) -> bool:
+    print("This collection may:")
+    for warning in warnings:
+        print(f"- {warning}")
+    if assume_yes:
+        print("Proceeding because --yes was supplied.")
+        return True
+    try:
+        response = input("Continue? [y/N] ")
+    except EOFError:
+        return False
+    return response.strip().lower() in {"y", "yes"}
+
+
+def _gnss_policy(profile: str, *, no_gps: bool) -> tuple[bool, int, bool] | None:
+    if no_gps or profile == "optimize":
+        return None
+    if profile == "one-off":
+        return (True, 6, True)
+    if profile == "continuous":
+        return (False, 1, False)
+    raise ValueError(f"unknown collection profile: {profile}")
 
 
 def _select_device(

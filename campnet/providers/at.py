@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from campnet.at import ATClient
 from campnet.at_registry import ATCommand, command, require_authorization
 from campnet.models import JsonValue, ProviderResult, utc_now
+from campnet.normalization import normalize_at_result
 from campnet.providers.base import CollectionContext
 
 CONTINUOUS_COMMANDS = (
@@ -17,16 +18,19 @@ CONTINUOUS_COMMANDS = (
     command("network.carrier_aggregation"),
 )
 
-ONE_OFF_COMMANDS = CONTINUOUS_COMMANDS + (
+CONFIGURATION_COMMANDS = (
     command("config.mode_preference"),
     command("config.rat_order"),
     command("config.lte_bands"),
     command("config.nsa_bands"),
     command("config.sa_bands"),
     command("config.nr_mode"),
-    command("network.operator_scan"),
-    command("network.cell_scan"),
 )
+
+PASSIVE_SCAN_COMMANDS = (command("network.operator_scan"), command("network.cell_scan"))
+SIM_SPECIFIC_COMMANDS = CONTINUOUS_COMMANDS + CONFIGURATION_COMMANDS
+ONE_OFF_COMMANDS = SIM_SPECIFIC_COMMANDS + PASSIVE_SCAN_COMMANDS
+OPTIMIZE_COMMANDS = SIM_SPECIFIC_COMMANDS
 
 
 class ATProvider:
@@ -61,6 +65,10 @@ class ATProvider:
                 key = f"{rendered}#{attempt.attempt}"
                 if attempt.response is not None:
                     raw_responses[key] = attempt.response
+                if attempt.raw_evidence is not None:
+                    raw_responses.update(
+                        {f"{key}:{name}": value for name, value in attempt.raw_evidence.items()}
+                    )
                 if attempt.error is not None:
                     errors.append(f"{key}: {attempt.error}")
                 attempt_data.append(
@@ -78,10 +86,12 @@ class ATProvider:
                     "attempts": attempt_data,
                 }
             )
-        return ProviderResult(
-            provider=self.name,
-            collected_at=utc_now(),
-            data={"commands": commands},
-            raw_responses=raw_responses,
-            errors=tuple(errors),
+        return normalize_at_result(
+            ProviderResult(
+                provider=self.name,
+                collected_at=utc_now(),
+                data={"commands": commands},
+                raw_responses=raw_responses,
+                errors=tuple(errors),
+            )
         )

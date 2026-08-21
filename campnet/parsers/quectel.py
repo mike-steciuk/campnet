@@ -31,11 +31,13 @@ def parse_quectel_snapshot(raw_responses: dict[str, str]) -> RadioSnapshot:
 
 
 def _response(raw_responses: dict[str, str], command: str) -> str:
+    pattern = re.compile(rf"^{re.escape(command)}#(\d+)$")
     candidates = sorted(
-        (key for key in raw_responses if key.startswith(f"{command}#")),
-        key=lambda key: int(key.rsplit("#", 1)[1]),
+        (int(match.group(1)), key)
+        for key in raw_responses
+        if (match := pattern.fullmatch(key)) is not None
     )
-    return raw_responses[candidates[-1]] if candidates else ""
+    return raw_responses[candidates[-1][1]] if candidates else ""
 
 
 def _parse_ati(response: str) -> ModemInfo | None:

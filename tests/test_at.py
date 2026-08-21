@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 
 from campnet.at import ATClient
+from campnet.transports import ATTransportResult
 
 
 class SequenceTransport:
@@ -42,3 +43,20 @@ def test_at_client_rejects_non_at_commands() -> None:
         assert "begin with AT" in str(error)
     else:
         raise AssertionError("unsafe non-AT command was accepted")
+
+
+def test_at_client_preserves_successful_transport_evidence() -> None:
+    class EvidenceTransport:
+        def exchange(self, command: str, timeout_seconds: float) -> ATTransportResult:
+            del command, timeout_seconds
+            return ATTransportResult(
+                "OK\n",
+                {"ssh.execution.json": '{"exit_code": 0}', "ssh.stderr": "warning"},
+            )
+
+    exchange = ATClient(EvidenceTransport(), retries=0).execute("ATI")
+
+    assert exchange.attempts[0].raw_evidence == {
+        "ssh.execution.json": '{"exit_code": 0}',
+        "ssh.stderr": "warning",
+    }

@@ -20,12 +20,14 @@ class GNSSProvider:
         enable_if_needed: bool,
         fix_attempts: int = 6,
         fix_interval_seconds: float = 5.0,
+        report_unavailable_as_error: bool = True,
         sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
         self._client = client
         self._enable_if_needed = enable_if_needed
         self._fix_attempts = fix_attempts
         self._fix_interval_seconds = fix_interval_seconds
+        self._report_unavailable_as_error = report_unavailable_as_error
         self._sleeper = sleeper
 
     @property
@@ -63,7 +65,7 @@ class GNSSProvider:
                         break
                     if attempt_number + 1 < self._fix_attempts:
                         self._sleeper(self._fix_interval_seconds)
-            elif not self._enable_if_needed:
+            elif not self._enable_if_needed and self._report_unavailable_as_error:
                 errors.append("GNSS is disabled; continuous profile does not change modem state")
         finally:
             if enabled_by_campnet:
@@ -73,7 +75,11 @@ class GNSSProvider:
                     timeout_seconds=stop_spec.execution.recommended_timeout_seconds,
                 )
                 _record(stop, raw, errors)
-        if not location and (initially_enabled or enabled_by_campnet):
+        if (
+            not location
+            and (initially_enabled or enabled_by_campnet)
+            and self._report_unavailable_as_error
+        ):
             errors.append("GNSS did not acquire a location fix during the collection window")
         return ProviderResult(
             provider=self.name,
@@ -100,6 +106,8 @@ def _record(
         key = f"{exchange.command}#{suffix}"
         if attempt.response is not None:
             raw[key] = attempt.response
+        if attempt.raw_evidence is not None:
+            raw.update({f"{key}:{name}": value for name, value in attempt.raw_evidence.items()})
         if attempt.error is not None:
             errors.append(f"{key}: {attempt.error}")
 

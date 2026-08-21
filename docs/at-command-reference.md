@@ -128,6 +128,156 @@ Expected response: Command-specific result lines followed by OK, or an exact mod
 gl_modem -B 1-1.2 AT 'AT+QNWPREFCFG="nr5g_band"'
 ```
 
+## `config.set_lte_bands`
+
+- Command: `AT+QNWPREFCFG="lte_band",<value>`
+- Category: configuration
+- Type: set/configuration
+- Safety: persistent configuration
+- Timeout: 10 seconds
+- Parser: none
+
+Sets enabled LTE bands.
+
+Purpose: Restores a previously captured LTE band preference.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+Side effects:
+
+- Changes persistent radio configuration and may affect connectivity.
+
+```bash
+# Sets enabled LTE bands.
+# Restores a previously captured LTE band preference.
+gl_modem -B 1-1.2 AT 'AT+QNWPREFCFG="lte_band",<value>'
+```
+
+## `config.set_mode_preference`
+
+- Command: `AT+QNWPREFCFG="mode_pref",<value>`
+- Category: configuration
+- Type: set/configuration
+- Safety: persistent configuration
+- Timeout: 10 seconds
+- Parser: none
+
+Sets the radio mode preference.
+
+Purpose: Restores a previously captured radio mode preference.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+Side effects:
+
+- Changes persistent radio configuration and may affect connectivity.
+
+```bash
+# Sets the radio mode preference.
+# Restores a previously captured radio mode preference.
+gl_modem -B 1-1.2 AT 'AT+QNWPREFCFG="mode_pref",<value>'
+```
+
+## `config.set_nr_mode`
+
+- Command: `AT+QNWPREFCFG="nr5g_disable_mode",<value>`
+- Category: configuration
+- Type: set/configuration
+- Safety: persistent configuration
+- Timeout: 10 seconds
+- Parser: none
+
+Sets the NR disable mode.
+
+Purpose: Restores a previously captured NR disable mode.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+Side effects:
+
+- Changes persistent radio configuration and may affect connectivity.
+
+```bash
+# Sets the NR disable mode.
+# Restores a previously captured NR disable mode.
+gl_modem -B 1-1.2 AT 'AT+QNWPREFCFG="nr5g_disable_mode",<value>'
+```
+
+## `config.set_nsa_bands`
+
+- Command: `AT+QNWPREFCFG="nsa_nr5g_band",<value>`
+- Category: configuration
+- Type: set/configuration
+- Safety: persistent configuration
+- Timeout: 10 seconds
+- Parser: none
+
+Sets enabled NSA NR bands.
+
+Purpose: Restores a previously captured NSA NR band preference.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+Side effects:
+
+- Changes persistent radio configuration and may affect connectivity.
+
+```bash
+# Sets enabled NSA NR bands.
+# Restores a previously captured NSA NR band preference.
+gl_modem -B 1-1.2 AT 'AT+QNWPREFCFG="nsa_nr5g_band",<value>'
+```
+
+## `config.set_rat_order`
+
+- Command: `AT+QNWPREFCFG="rat_acq_order",<value>`
+- Category: configuration
+- Type: set/configuration
+- Safety: persistent configuration
+- Timeout: 10 seconds
+- Parser: none
+
+Sets radio-access acquisition order.
+
+Purpose: Restores a previously captured RAT acquisition order.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+Side effects:
+
+- Changes persistent radio configuration and may affect connectivity.
+
+```bash
+# Sets radio-access acquisition order.
+# Restores a previously captured RAT acquisition order.
+gl_modem -B 1-1.2 AT 'AT+QNWPREFCFG="rat_acq_order",<value>'
+```
+
+## `config.set_sa_bands`
+
+- Command: `AT+QNWPREFCFG="nr5g_band",<value>`
+- Category: configuration
+- Type: set/configuration
+- Safety: persistent configuration
+- Timeout: 10 seconds
+- Parser: none
+
+Sets enabled SA NR bands.
+
+Purpose: Restores a previously captured SA NR band preference.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+Side effects:
+
+- Changes persistent radio configuration and may affect connectivity.
+
+```bash
+# Sets enabled SA NR bands.
+# Restores a previously captured SA NR band preference.
+gl_modem -B 1-1.2 AT 'AT+QNWPREFCFG="nr5g_band",<value>'
+```
+
 ## `gnss.enable`
 
 - Command: `AT+QGPS=1`
@@ -308,6 +458,27 @@ Expected response: Command-specific result lines followed by OK, or an exact mod
 gl_modem -B 1-1.2 AT 'AT+QNWINFO'
 ```
 
+## `network.eps_registration`
+
+- Command: `AT+CEREG?`
+- Category: network registration
+- Type: query
+- Safety: read-only
+- Timeout: 10 seconds
+- Parser: `campnet.providers.multisim.registration_ready`
+
+Queries EPS registration state.
+
+Purpose: Waits for home or roaming registration after a slot switch.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+```bash
+# Queries EPS registration state.
+# Waits for home or roaming registration after a slot switch.
+gl_modem -B 1-1.2 AT 'AT+CEREG?'
+```
+
 ## `network.neighbor_cells`
 
 - Command: `AT+QENG="neighbourcell"`
@@ -334,7 +505,7 @@ gl_modem -B 1-1.2 AT 'AT+QENG="neighbourcell"'
 - Command: `AT+COPS=?`
 - Category: operator scan
 - Type: query
-- Safety: read-only
+- Safety: connectivity-impacting
 - Timeout: 180 seconds
 - Parser: `campnet.parsers.quectel.parse_modem`
 
@@ -373,4 +544,93 @@ Expected response: Command-specific result lines followed by OK, or an exact mod
 # Reports engineering data for serving cells.
 # Captures LTE and NR serving-cell radio measurements.
 gl_modem -B 1-1.2 AT 'AT+QENG="servingcell"'
+```
+
+## `sim.active_slot`
+
+- Command: `AT+QUIMSLOT?`
+- Category: SIM
+- Type: query
+- Safety: read-only
+- Timeout: 10 seconds
+- Parser: `campnet.providers.quectel_sim.parse_active_slot`
+
+Queries the active SIM slot.
+
+Purpose: Records the original slot before multi-SIM collection.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+```bash
+# Queries the active SIM slot.
+# Records the original slot before multi-SIM collection.
+gl_modem -B 1-1.2 AT 'AT+QUIMSLOT?'
+```
+
+## `sim.dual_slot_status`
+
+- Command: `AT+QSIMCFG="dual_slot_status"`
+- Category: SIM
+- Type: query
+- Safety: read-only
+- Timeout: 10 seconds
+- Parser: `campnet.providers.quectel_sim.parse_installed_slots`
+
+Queries dual-slot presence information.
+
+Purpose: Enables switching only when both cards are explicitly detected.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+```bash
+# Queries dual-slot presence information.
+# Enables switching only when both cards are explicitly detected.
+gl_modem -B 1-1.2 AT 'AT+QSIMCFG="dual_slot_status"'
+```
+
+## `sim.readiness`
+
+- Command: `AT+CPIN?`
+- Category: SIM
+- Type: query
+- Safety: read-only
+- Timeout: 10 seconds
+- Parser: `campnet.providers.multisim.sim_ready`
+
+Queries active SIM readiness.
+
+Purpose: Waits for the selected card to initialize before collection.
+
+Expected response: Command-specific result lines followed by OK, or an exact modem error.
+
+```bash
+# Queries active SIM readiness.
+# Waits for the selected card to initialize before collection.
+gl_modem -B 1-1.2 AT 'AT+CPIN?'
+```
+
+## `sim.switch_slot`
+
+- Command: `AT+QUIMSLOT=<slot>`
+- Category: SIM
+- Type: set/configuration
+- Safety: connectivity-impacting
+- Timeout: 30 seconds
+- Parser: none
+
+Selects the active SIM slot.
+
+Purpose: Collects each installed SIM and restores the original slot.
+
+Expected response: OK or an exact modem error; SIM initialization and registration follow asynchronously.
+
+Side effects:
+
+- Interrupts cellular connectivity.
+- Persists the selected slot and requires restoration.
+
+```bash
+# Selects the active SIM slot.
+# Collects each installed SIM and restores the original slot.
+gl_modem -B 1-1.2 AT 'AT+QUIMSLOT=<slot>'
 ```

@@ -43,6 +43,17 @@ implemented in the current feature branch; they may still need field hardening.
 - [ ] CSV and HTML exports
 - [ ] Map and time-series views with coordinate privacy controls
 
+## 0.5 - Multi-SIM surveys
+
+- [x] Read-only active-slot, SIM readiness, and registration inventory
+- [x] Provider-level parent result with per-SIM-slot observation segments
+- [ ] Redacted/stable local SIM identity and configured safe slot labels
+- [ ] Explicitly authorized GL-X3000 slot switching with verified restoration
+- [x] Mocked sequential per-SIM radio collection with original-slot restoration
+- [ ] Live validation with two installed and activated SIMs
+- [ ] Optional repeated passive scans to measure SIM/firmware scan bias
+- [ ] Side-by-side per-SIM coverage, aggregation, and performance reporting
+
 ## Later
 
 - [ ] Controlled band experiments with snapshot, explicit authorization,

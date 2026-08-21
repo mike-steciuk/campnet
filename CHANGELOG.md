@@ -7,14 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+- Recognize the extended dual-SIM inventory returned by GL-X3000 RM520N firmware,
+  while keeping ambiguous slot responses in the safe unknown state.
+- Fixed multi-SIM parent normalization so shared passive carrier scans remain
+  available to reports, including in-memory recovery for already-saved scans.
+- Added an operation-specific one-off preflight with safe cancellation and
+  `--yes` automation support before long scans, GNSS changes, or SIM switching.
+- Moved Quectel parsing to collection/schema-read normalization so reports
+  consume canonical structured radio observations while raw evidence remains
+  available.
+- Routed future configuration restoration through parameterized AT registry
+  operations and classified long operator scans by connectivity impact.
+- Preserved structured stdout, stderr, exit status, and timeout evidence from
+  failed speed-test and SSH AT executions.
+- Separate generic multi-SIM orchestration from vendor-specific slot control
+  and Quectel response parsing, with an extension contract for new devices.
+
+- Documented the sequential multi-SIM survey model, privacy boundaries,
+  switching safety, and phased implementation plan.
+- Added conservative dual-SIM detection, sequential active-radio collection,
+  mandatory original-slot restoration, and an `optimize`-only speed-test profile.
+- Added per-slot multi-SIM reporting; live two-SIM validation remains pending.
+- Continuous surveys now record an existing GNSS fix with one query while
+  leaving disabled receivers and acquisition state unchanged.
 - Labeled carrier-aggregation results with the registered carrier and PLMN,
   with an explicit unknown fallback when attribution is ambiguous.
 - Added an interactive console survey browser organized by location, site,
   and reverse-chronological scan date, plus a PowerShell launcher.
 - Added ranked per-carrier signal reporting from passive visible-cell scans,
   including quality, detected-cell counts, and explicit coverage caveats.
-- Updated roadmap, setup guidance, and durable handoff context for moving
-  development to another computer.
+- Replaced transient handoff state with durable setup and tested-hardware
+  documentation.
 - Added an authoritative AT command registry, typed validation and error
   records, safety guards, generated reference documentation, and registry
   integrity tests.
